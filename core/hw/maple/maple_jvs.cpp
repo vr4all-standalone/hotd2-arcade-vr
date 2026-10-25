@@ -16,6 +16,7 @@
 	 You should have received a copy of the GNU General Public License
 	 along with flycast.  If not, see <https://www.gnu.org/licenses/>.
  */
+#include "standalone_game.h"
 #include "maple_devs.h"
 #include "maple_if.h"
 #include "hw/naomi/naomi_cart.h"
@@ -379,6 +380,7 @@ private:
 	std::array<u32, 32> p2_mapping;
 	u32 digOutput = 0;
 	int coin_count[4] {};
+    vr::StandaloneArcadeCoins arcadeCoins[4];
 };
 
 // Most common JVS board
@@ -2040,7 +2042,7 @@ void MIEImpl::serialize(Serializer& ser) const
 	ser << board_count;
 	for (u32 i = 0; i < io_boards.size(); i++)
 		io_boards[i]->serialize(ser);
-	if (ser.rollback())		// (savestate files stay as they are)
+	if (ser.rollback())		// physical coin edges are needed during rollback
 	{
 		const bool uploading = jvsFirmware != nullptr;
 		ser << uploading;
@@ -2287,6 +2289,7 @@ u32 jvs_io_board::handle_jvs_message(const u8 *buffer_in, u32 length_in, u8 *buf
 							old_coin_chute[first_player + slot] = coin_chute;
 
 							LOGJVS("%d:%d ", slot + 1 + first_player, coin_count[first_player + slot]);
+							coin_count[slot] = arcadeCoins[slot].update(coin_count[slot], config::ForceFreePlay, (buttons[first_player + slot] & NAOMI_START_KEY) != 0);
 							// status (2 highest bits, 0: normal), coin count MSB
 							JVS_OUT((coin_count[slot] >> 8) & 0x3F);
 							// coin count LSB
@@ -2514,8 +2517,10 @@ void jvs_io_board::serialize(Serializer& ser) const
 	ser << node_id;
 	ser << lightgun_as_analog;
 	ser << coin_count;
-	if (ser.rollback())		// (savestate files stay as they are)
+	if (ser.rollback())		// physical coin edges are needed during rollback
 		ser << old_coin_chute;
+	for (const auto& coins : arcadeCoins)
+		coins.serialize(ser);
 }
 void jvs_io_board::deserialize(Deserializer& deser)
 {
@@ -2527,6 +2532,15 @@ void jvs_io_board::deserialize(Deserializer& deser)
 		memset(coin_count, 0, sizeof(coin_count));
 	if (deser.rollback())
 		deser >> old_coin_chute;
+    for (auto& coins : arcadeCoins) {
+        if (deser.version() >= Deserializer::V60)
+            coins.deserialize(deser);
+        else {
+            // The snapshot already restored both cabinet and game credit accounting.
+            coins.seeded = true;
+            coins.startWas = false;
+        }
+    }
 }
 
 // Emulates a 838-14245-92 maple to RS232 converter

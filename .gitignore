@@ -55,3 +55,6 @@ release-signing.properties
 *.p12
 *.pfx
 !shell/uwp/sign_cert.pfx
+
+# HOTD2 arcade private diagnostic inputs and evidence
+.research/

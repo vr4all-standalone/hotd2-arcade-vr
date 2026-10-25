@@ -5,6 +5,7 @@
 */
 #include "vr_reproject.h"
 #include "vr/xr_host.h"
+#include "vr/xr_sim.h"
 #include "vr/hands_rip.h"
 #include "transform_matrix.h"
 #include "hw/pvr/ta_ctx.h"
@@ -32,6 +33,7 @@
 #include <array>
 #include "rend/vr/gun_calibration.h"
 #include "rend/vr/death_gun.h"
+#include "rend/vr/hotd2_arcade.h"
 
 namespace vr
 {
@@ -308,7 +310,7 @@ struct GameProfile
 		u32 base = 0, stride = 0; u8 ammo = 0, magazine = 0, shots = 0;
 		s16 weapon = -1; u8 rifleValue = 0; u32 playing = 0;
 		// Float-valued VM variables instead of the byte/u16 block (original Lupin).
-		bool floats = false, deathCrimson = false; u32 session = 0, active = 0;
+		bool floats = false, deathCrimson = false, hotd2Arcade = false; u32 session = 0, active = 0;
 		int shotWaitMs = 100;
 		CodeGuard guards[6] {};
 	} gunRam;
@@ -716,6 +718,39 @@ static std::vector<GameProfile> makeProfiles()
     // A captured human mesh is about 131 game units high; .12 yields about 1.73 m at the default world size.
     p.unitScale = .12f;
     list.push_back(p);
+
+    // HOTD2 USA arcade cartridge (epr-21585.ic22, b23d1a0c). Measured on the actual
+    // NAOMI renderer: projection/viewport 0x9c29a0/0x9c2ad8. Camera setup 0x09a720
+    // builds the render lens from angle 7484 at 0x09a81a, and separately keeps
+    // the stock hit-test lens at 0x403438 from the half-angle at 0x09a81c.
+    p = GameProfile();
+    p.gameId = "hotd2";
+    p.gunMenu = true;
+    p.projAddr = 0x9C29A0;
+    p.viewportAddr = 0x9C2AD8;
+    p.fovScale = 3.f;
+    p.fovLiterals[0] = 0x09A81A;
+    p.fovStock = 7484;
+    p.stockFocalAddr = 0x403438;
+    p.focal = 640.f;
+    p.analogOffscreenReload = true;
+    p.gunRam.base = hotd2::PlayerBase;
+    p.gunRam.stride = hotd2::PlayerStride;
+    p.gunRam.hotd2Arcade = true;
+
+    // Opening-scene capture, sharing the validated complete gun cache/preparation path.
+    // The real arcade pass contains 30 pistol polygons, nine open edges, measured
+    // principal extents 1:.591:.103; no Dreamcast model or generated cache is bundled.
+    p.model.kind = hands::Source::AttractGun;
+    p.model.prepSeconds = 150.f;
+    p.model.prepStartSeconds = 30.f;
+    p.model.gunTextureCrc = 0x56212FE5;
+    p.model.gunTextureBytes = 8192;
+    p.model.gunTextureSize = 0x1B; // native 64 x 64 ARGB1555
+    p.model.guns[1] = { "agent's pistol", "gun-hotd2-arcade-pistol.bin",
+        { 0x6B8800 }, 30, 30, .26f, true, { 30 }, 9, { 1.f, .591f, .103f }, .10f, 0.f, 0.f, true };
+
+    list.push_back(p);
 	return list;
 }
 static const std::vector<GameProfile> profiles = makeProfiles();
@@ -920,6 +955,10 @@ static void applyProfileWrites(Event, void *)
 	const GameProfile *prof = activeProfile;
 	if (prof == nullptr || !config::VrReproject || !profileCodeThere(*prof))
 		return;
+
+    if (prof->gunRam.hotd2Arcade)
+        hotd2::applyInput([](unsigned a) { return ReadMem16_nommu(0x8C000000u+a); },
+            [](unsigned a,unsigned w) { WriteMem16_nommu(0x8C000000u+a,u16(w)); });
 	if (prof->fovPatch[0].offset != 0 && config::VrWidenFov && config::VrFovScale > 1.f)
 	{
 		bool stock = true;
@@ -959,6 +998,13 @@ void netplayDigest(MD5Sum& md5)
 				md5.add(c.offset).add(c.stock).add(c.patched);
 		for (const Poke& poke : prof->pokes)
 			md5.add(poke.offset).add(poke.value);
+        if (prof->gunRam.hotd2Arcade) {
+            for (const auto& patch : hotd2::InputPatches)
+                md5.add(patch.offset).add(patch.stock).add(patch.patched);
+            md5.add(hotd2::InputBase).add(hotd2::InputStride);
+            md5.add(hotd2::Calibration);
+            md5.add(u32(0x3D10A2)).add(u16(2));
+        }
 	}
 }
 
@@ -1011,15 +1057,26 @@ static void snapGuns(Event, void *)
 {
 	const GameProfile *prof = activeProfile;
 	u8 enabled = 0;
-    death::Gun native[2];
+    struct NativeGun {bool known=false,active=false;u8 ammo=0,magazine=0;u32 shots=0;} native[2];
     const bool isDeath = prof != nullptr && prof->gunRam.deathCrimson;
-    if (isDeath)
+    const bool isHotd2 = prof != nullptr && prof->gunRam.hotd2Arcade;
+    const bool isNative = isDeath || isHotd2;
+    if (isNative)
     {
-        for (int player = 0; player < 2; ++player)
-            native[player] = death::readGun(player,
-                [](unsigned a) { return ReadMem8_nommu(0x8C000000u + a); },
-                [](unsigned a) { return ReadMem16_nommu(0x8C000000u + a); },
-                [](unsigned a) { return ReadMem32_nommu(0x8C000000u + a); });
+        for (int player = 0; player < 2; ++player) {
+            if (isDeath) {
+                const auto g=death::readGun(player,
+                    [](unsigned a){return ReadMem8_nommu(0x8C000000u+a);},
+                    [](unsigned a){return ReadMem16_nommu(0x8C000000u+a);},
+                    [](unsigned a){return ReadMem32_nommu(0x8C000000u+a);});
+                native[player]={g.known,g.active,g.ammo,g.magazine,g.shots};
+            } else {
+                const auto g=hotd2::readGun(player,
+                    [](unsigned a){return ReadMem16_nommu(0x8C000000u+a);},
+                    [](unsigned a){return ReadMem32_nommu(0x8C000000u+a);});
+                native[player]={g.known,g.active,g.ammo,g.magazine,g.shots};
+            }
+        }
         const bool known = native[0].known && native[1].known;
         if (known) enabled = (native[0].active ? 1 : 0) | (native[1].active ? 2 : 0);
         const u8 was = vmPlayers.exchange(enabled);
@@ -1051,7 +1108,7 @@ static void snapGuns(Event, void *)
 			continue;
 		const GameProfile::GunRam& ram = prof->gunRam;
 		GunState now {};
-        if (isDeath)
+        if (isNative)
         {
             now.valid = native[player].known && native[player].active;
             now.ammo = native[player].ammo; now.magazine = native[player].magazine;
@@ -1087,14 +1144,14 @@ static void snapGuns(Event, void *)
 			// rounds, 0x2710, wrap the byte at its 17th shot)
 			const int rises = (s16)(u16)(now.shots - was.shots);
 			// Death Crimson updates ammo before its accepted-shot counter; that counter already excludes empty pulls.
-			if (rises > 0 && rises <= 8 && (isDeath || now.rifle || was.rifle || (s8)(now.ammo - was.ammo) < 0))
+			if (rises > 0 && rises <= 8 && (isNative || now.rifle || was.rifle || (s8)(now.ammo - was.ammo) < 0))
 				now.fired += rises;
 			if (now.magazine != was.magazine)
 				NOTICE_LOG(RENDERER, "VR: P%d magazine %d -> %d", player + 1, was.magazine, now.magazine);
 			if (now.rifle != was.rifle)
 				NOTICE_LOG(RENDERER, "VR: P%d weapon %s -> %s", player + 1, was.rifle ? "rifle" : "pistol", now.rifle ? "rifle" : "pistol");
 		}
-		if ((ram.floats || isDeath) && now.valid && !was.valid)
+		if ((ram.floats || isNative) && now.valid && !was.valid)
 			NOTICE_LOG(RENDERER, "VR: P%d magazine 0 -> %d", player + 1, now.magazine);
 		gunSnaps[player] = now;
 	}
@@ -1947,7 +2004,7 @@ static void hidePlayer2Prompt(rend_context& ctx, const RenderPass& pass, const R
 }
 
 bool player2Prompting() {
-	if (activeProfile != nullptr && (activeProfile->gunRam.floats || activeProfile->gunRam.deathCrimson))
+	if (activeProfile != nullptr && (activeProfile->gunRam.floats || activeProfile->gunRam.deathCrimson || activeProfile->gunRam.hotd2Arcade))
 		return (vmPlayers.load() & 2) == 0;
 	return steadyMs() - p2PromptAt < 500;
 }
@@ -1976,7 +2033,17 @@ static void closeCutsceneFrame(Event, void *)
 		cutsceneOn = false;
 	}
     bool bars = false, inGame = false;
-    if (prof != nullptr && prof->gunRam.deathCrimson)
+    if (prof != nullptr && prof->gunRam.hotd2Arcade)
+    {
+        if (cutscenePasses.exchange(0) == 0) return;
+        const auto scene=hotd2::readScene(
+            [](unsigned a){return ReadMem16_nommu(0x8C000000u+a);},
+            [](unsigned a){return ReadMem32_nommu(0x8C000000u+a);});
+        bars=scene.known&&scene.movie;
+        inGame=vmPlayersKnown.load()&&vmPlayers.load()!=0;
+        cutsceneBars=0;
+    }
+    else if (prof != nullptr && prof->gunRam.deathCrimson)
     {
         if (cutscenePasses.exchange(0) == 0) return;
         const death::Scene scene = death::readScene(
@@ -2035,7 +2102,7 @@ static void logPlayer2Prompt()
 }
 
 bool player2PromptKnown() {
-	return p2PromptTextures[0] != 0 || (activeProfile != nullptr && (activeProfile->gunRam.floats || activeProfile->gunRam.deathCrimson) && vmPlayersKnown);
+	return p2PromptTextures[0] != 0 || (activeProfile != nullptr && (activeProfile->gunRam.floats || activeProfile->gunRam.deathCrimson || activeProfile->gunRam.hotd2Arcade) && vmPlayersKnown);
 }
 
 // A 3D polygon with some of its corners at the 2D plane's W (a game whose near plane is
@@ -2477,7 +2544,7 @@ void dropShotMarker(rend_context& ctx, const RenderPass& pass, const RenderPass&
 		cutscenePasses++;
 	if (!config::VrReproject || ctx.isRTT || settings.platform.isNaomi2())
 		return;
-	const bool onPC = !xr::enabled();
+	const bool onPC = !xr::enabled() || xr::sim::active();
 	if (onPC)
 		ripRequested(ctx, pass, previousPass);
 #ifndef __ANDROID__

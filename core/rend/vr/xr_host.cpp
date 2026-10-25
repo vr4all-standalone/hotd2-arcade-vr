@@ -706,7 +706,7 @@ bool init()
 #endif
 	createInfo.enabledExtensionCount = (u32)extensions.size();
 	createInfo.enabledExtensionNames = extensions.data();
-	strcpy(createInfo.applicationInfo.applicationName, "Death Crimson OX VR");
+	strcpy(createInfo.applicationInfo.applicationName, "HOTD2 Arcade VR");
 	createInfo.applicationInfo.applicationVersion = 1;
 	strcpy(createInfo.applicationInfo.engineName, "Flycast");
 	createInfo.applicationInfo.engineVersion = 1;
@@ -2983,7 +2983,7 @@ bool frame()
 	const bool lupinGun = source != nullptr && source->kind == hands::Source::LupinGun;
 	const bool deathGun = source != nullptr && source->kind == hands::Source::DeathGun;
 	const bool gunModels = cmGuns || lupinGun || deathGun;
-	const char *title = "DEATH CRIMSON OX VR";
+	const char *title = "HOTD2 ARCADE VR";
 	// CM VR 1.2: Confidential Mission's panels in its start screen's colours (VR4All's: the panel, its
 	// line, violet, cream, muted grey, lime)
 	const glm::vec3 violet(169 / 255.f, 155 / 255.f, 1.f), cream(248 / 255.f, 245 / 255.f, 239 / 255.f), muted(155 / 255.f, 165 / 255.f, 180 / 255.f);

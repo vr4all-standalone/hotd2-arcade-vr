@@ -189,7 +189,7 @@ public abstract class BaseGLActivity extends Activity implements ActivityCompat.
     }
 
     // hotd2-vr: the "vr" build type's applicationId (build.gradle.kts, androidComponents)
-    private static final String VR_APPLICATION_ID = "com.vrlightgunhub.deathcrimsonox";
+    private static final String VR_APPLICATION_ID = "com.vrlightgunhub.hotd2arcade";
 
 	// Called from native code
     public void showAlertDialog(String message)
@@ -218,14 +218,14 @@ public abstract class BaseGLActivity extends Activity implements ActivityCompat.
     private String findVrGame()
     {
         Intent intent = getIntent();
-        String picked = intent != null ? intent.getStringExtra(DeathCrimsonStartActivity.EXTRA_GAME) : null;
+        String picked = intent != null ? intent.getStringExtra(Hotd2ArcadeStartActivity.EXTRA_GAME) : null;
         if (intent != null && Intent.ACTION_VIEW.equals(intent.getAction())) {
             Uri uri = intent.getData();
             if (uri == null || uri.getPath() == null || (uri.getScheme() != null && !"file".equals(uri.getScheme())))
                 return null;
             picked = uri.getPath();
         }
-        return DeathCrimsonFiles.launchPath(picked != null ? new File(picked) : null, DeathCrimsonStartActivity.roots(this));
+        return Hotd2ArcadeFiles.launchPath(picked != null ? new File(picked) : null, Hotd2ArcadeStartActivity.roots(this));
     }
     // hotd2-vr: the start screen, when the game can't start yet
     private void showVrSetup()
@@ -234,14 +234,14 @@ public abstract class BaseGLActivity extends Activity implements ActivityCompat.
     }
 
     /**
-     * hotd2-vr: back to Death Crimson OX VR's start screen (DeathCrimsonStartActivity): it opens in the
+     * hotd2-vr: back to HOTD2 Arcade VR's start screen (Hotd2ArcadeStartActivity): it opens in the
      * headset's home (an immersive app opens a panel that way), and the game's activity finishes.
      * The VR menu's "Quit to the start screen" calls this through JNI, from any thread.
      */
     public static void quitToStart(Activity activity)
     {
         activity.runOnUiThread(() -> {
-            Intent panel = new Intent(activity.getApplicationContext(), DeathCrimsonStartActivity.class);
+            Intent panel = new Intent(activity.getApplicationContext(), Hotd2ArcadeStartActivity.class);
             panel.setAction(Intent.ACTION_MAIN);
             panel.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             try {

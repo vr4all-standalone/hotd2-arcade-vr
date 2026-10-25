@@ -93,7 +93,7 @@ option(USE_VULKAN "Build with Vulkan support" ON)
 set(MOLTENVK_DYLIB "" CACHE FILEPATH "Path to macOS MoltenVK dylib for macOS Vulkan builds")
 option(USE_DX9 "Build with Direct3D 9 support" ON)
 option(USE_OPENXR "Android: build as an immersive OpenXR headset app; Windows: PCVR (hotd2-vr)" OFF)
-option(VR_STANDALONE_DEATHCRIMSONOX "Restrict loaded games to Death Crimson OX" ON)
+option(VR_STANDALONE_HOTD2ARCADE "Restrict loaded games to the measured HOTD2 USA arcade cartridge" ON)
 option(USE_DX11 "Build with Direct3D 11 support" ON)
 option(LIBRETRO "Build libretro core" OFF)
 option(USE_OPENGL "Use OpenGL API" ON)
@@ -287,8 +287,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 		CMAKE_CXX_STANDARD 20
 		CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(VR_STANDALONE_DEATHCRIMSONOX)
-	target_compile_definitions(${PROJECT_NAME} PRIVATE VR_STANDALONE_DEATHCRIMSONOX=1)
+if(VR_STANDALONE_HOTD2ARCADE)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE VR_STANDALONE_HOTD2ARCADE=1)
 endif()
 
 if(WINDOWS_STORE)
@@ -1347,7 +1347,7 @@ if(NOT LIBRETRO)
 				MACOSX_BUNDLE_LONG_VERSION_STRING "${GIT_VERSION}"
 				MACOSX_BUNDLE_SHORT_VERSION_STRING "${TAG_VERSION}"
 				MACOSX_BUNDLE_BUNDLE_VERSION "${GIT_HASH}"
-				MACOSX_BUNDLE_COPYRIGHT "Copyright © ${YEAR} Flycast contributors. All rights reserved."
+				MACOSX_BUNDLE_COPYRIGHT "Copyright Â© ${YEAR} Flycast contributors. All rights reserved."
 				MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/shell/apple/emulator-ios/plist.in
 
 				XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf-with-dsym"
@@ -1417,7 +1417,7 @@ if(NOT LIBRETRO)
 				MACOSX_BUNDLE_SHORT_VERSION_STRING "${TAG_VERSION}"
 				MACOSX_BUNDLE_BUNDLE_VERSION "${GIT_HASH}"
 				MACOSX_BUNDLE_BUNDLE_NAME "Flycast"
-				MACOSX_BUNDLE_COPYRIGHT "Copyright © ${YEAR} Flycast contributors. All rights reserved."
+				MACOSX_BUNDLE_COPYRIGHT "Copyright Â© ${YEAR} Flycast contributors. All rights reserved."
 				XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf"
 				XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT[variant=RelWithDebInfo] "dwarf-with-dsym"
 				XCODE_ATTRIBUTE_CLANG_DEBUG_INFORMATION_LEVEL[variant=RelWithDebInfo] "line-tables-only"

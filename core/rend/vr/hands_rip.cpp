@@ -6,6 +6,7 @@
 */
 #include "hands_rip.h"
 #include "hands_build.h"
+#include "standalone_game.h"
 #include "death_model.h"
 #include "death_prep.h"
 #include "hw/naomi/naomi_cart.h"
@@ -308,7 +309,7 @@ void onStart()
 	else if (cmRun)
 		NOTICE_LOG(RENDERER, "VR hands: no model yet, taking the guns from the game");
 	else if (lupinRun)
-		NOTICE_LOG(RENDERER, "VR hands: no model yet, watching the attract demo for the in-game pistol");
+		NOTICE_LOG(RENDERER, "VR hands: no model yet, watching the game for its complete in-game pistol");
 	else
 		NOTICE_LOG(RENDERER, "VR hands: no model yet, running the game to its game over scene for it");
 }
@@ -400,9 +401,17 @@ void onVBlank()
 		const double limit = std::isfinite(source->prepSeconds) && source->prepSeconds > 0.f
 				? source->prepSeconds : 180.0;
 		progress = (float)std::min(now / limit, 0.97);
-		// No guessed Start timing: recognize the measured texture and complete geometry in
-		// whatever attract scene supplies them. The timeout is a bound, not a scene identity.
-		lightgunSet(0, OffScreen, OffScreen, 0);
+		// HOTD2's measured opening scene follows one Start at 30 s of game;
+        // neutral-attract sources leave this disabled. Geometry validation, rather
+        // than the elapsed time, decides whether the complete pistol was found.
+        const double pressAt = source->prepStartSeconds;
+        const bool start = std::isfinite(pressAt) && pressAt >= 0.0
+                && now >= pressAt && now < pressAt + PressHold;
+        if (start && !cmStartLogged) {
+            cmStartLogged = true;
+            NOTICE_LOG(RENDERER, "VR hands: measured opening Start at %.1f s", now);
+        }
+        lightgunSet(0, OffScreen, OffScreen, start ? 4u : 0u);
 		if (now >= limit)
 			stopPrep("no complete in-game pistol appeared (gave up)", Watching);
 		return;
@@ -798,8 +807,8 @@ void observeGuns(const rend_context& ctx, const RenderPass& pass, const RenderPa
 	std::unique_lock<std::mutex> lock(gunMutex);
 	for (int i = 0; i < 3; i++)
 	{
-		const GunTarget& gun = source.guns[i];
-		if (gunDone[i])
+        GunTarget gun = source.guns[i];
+        if (gunDone[i])
 			continue;
 		if (gun.merge && source.kind != Source::LupinGun)
 		{
@@ -810,6 +819,32 @@ void observeGuns(const rend_context& ctx, const RenderPass& pass, const RenderPa
 		}
 		if (gunFailedAt[i] != 0 && passes - gunFailedAt[i] < 30)
 			continue;
+        if (source.gunTextureCrc != 0) {
+            // The same arcade pistol is allocated at different addresses in the
+            // opening and attract scenes. Resolve only textures actually drawn in
+            // this pass, then let buildGun enforce the complete native geometry.
+            u32 found = 0;
+            std::vector<u32> checked;
+            auto resolve = [&](const std::vector<PolyParam>& list, u32 from, u32 to) {
+                for (u32 k = from; k < to && k < list.size() && found == 0; ++k) {
+                    const PolyParam& pp = list[k];
+                    const u32 tex = textureOf(pp);
+                    if (tex == 0 || (pp.tsp.full & 0x3F) != source.gunTextureSize
+                            || source.gunTextureBytes == 0 || tex > VRAM_SIZE
+                            || source.gunTextureBytes > VRAM_SIZE - tex
+                            || std::find(checked.begin(), checked.end(), tex) != checked.end())
+                        continue;
+                    checked.push_back(tex);
+                    if (standaloneArcadeCrc32(&vram[tex], source.gunTextureBytes) == source.gunTextureCrc)
+                        found = tex;
+                }
+            };
+            resolve(ctx.global_param_op, std::max(prev.op_count, 1u), pass.op_count);
+            resolve(ctx.global_param_pt, prev.pt_count, pass.pt_count);
+            resolve(ctx.global_param_tr, prev.tr_count, pass.tr_count);
+            if (found == 0) continue;
+            gun.textures[0] = found;
+        }
 		const std::vector<PolyParam> *runList = nullptr;
 		u32 runFrom = 0, runCount = 0;
 		auto scan = [&](const std::vector<PolyParam>& polys, u32 from, u32 to) {
@@ -834,12 +869,27 @@ void observeGuns(const rend_context& ctx, const RenderPass& pass, const RenderPa
 		scan(ctx.global_param_op, std::max(prev.op_count, 1u), pass.op_count);
 		scan(ctx.global_param_pt, prev.pt_count, pass.pt_count);
 		scan(ctx.global_param_tr, prev.tr_count, pass.tr_count);
-		if (runCount < gun.wholePolys)
-			continue;
-
-		std::vector<Rip> captures { passRip(ctx) };
-		for (u32 k = runFrom; k < runFrom + runCount; k++)
-			addRipPoly(ctx, (*runList)[k], captures[0]);
+        // A single native object can use more than one render list: HOTD2's
+        // pistol has 28 opaque body strips plus two translucent strips. Its
+        // complete cache must contain both, with the usual topology/shape checks.
+        std::vector<const PolyParam*> across;
+        if (gun.acrossLists) {
+            auto collect=[&](const std::vector<PolyParam>& list,u32 from,u32 to){
+                for(u32 k=from;k<to&&k<list.size();k++)
+                    if(gunPoly(ctx,list[k],gun))across.push_back(&list[k]);
+            };
+            collect(ctx.global_param_op,std::max(prev.op_count,1u),pass.op_count);
+            collect(ctx.global_param_pt,prev.pt_count,pass.pt_count);
+            collect(ctx.global_param_tr,prev.tr_count,pass.tr_count);
+            runCount=u32(across.size());
+        }
+        if (runCount < gun.wholePolys) continue;
+        std::vector<Rip> captures { passRip(ctx) };
+        if(gun.acrossLists) {
+            for(const auto* poly:across)addRipPoly(ctx,*poly,captures[0]);
+        } else {
+            for (u32 k=runFrom;k<runFrom+runCount;k++)addRipPoly(ctx,(*runList)[k],captures[0]);
+        }
 		std::vector<u8> model;
 		std::string error;
 		bool complete = false;

@@ -116,7 +116,15 @@ static bool loadBios(const char *biosName, Archive *child_archive, Archive *pare
 			if (!found_region)
 			{
 				verify(bios->blobs[romid].offset + bios->blobs[romid].length <= BIOS_SIZE);
+#if defined(VR_STANDALONE_HOTD2ARCADE) && VR_STANDALONE_HOTD2ARCADE
+                const auto archiveLength = file->length();
+#endif
 				u32 read = file->Read(biosData + bios->blobs[romid].offset, bios->blobs[romid].length);
+#if defined(VR_STANDALONE_HOTD2ARCADE) && VR_STANDALONE_HOTD2ARCADE
+                if (const char *error = vr::standaloneArcadeBiosError(biosName, archiveLength, read,
+                        biosData + bios->blobs[romid].offset, bios->blobs[romid].crc))
+                    throw NaomiCartException(error);
+#endif
 				if (config::GGPOEnable)
 					md5.add(biosData + bios->blobs[romid].offset, bios->blobs[romid].length);
 				DEBUG_LOG(NAOMI, "Mapped %s: %x bytes at %07x", bios->blobs[romid].filename, read, bios->blobs[romid].offset);
@@ -362,11 +370,11 @@ static void loadMameRom(const std::string& path, const std::string& fileName, Lo
 							u8 *dst = (u8 *)CurrentCartridge->GetPtr(game->blobs[romid].offset, len);
 							if (dst == nullptr)
 								throw NaomiCartException(strprintf(T("Invalid ROM: truncated %s"), game->blobs[romid].filename));
-#if defined(VR_STANDALONE_DEATHCRIMSONOX) && VR_STANDALONE_DEATHCRIMSONOX
+#if defined(VR_STANDALONE_HOTD2ARCADE) && VR_STANDALONE_HOTD2ARCADE
 							const auto archiveLength = file->length();
 #endif
 							u32 read = file->Read(dst, game->blobs[romid].length);
-#if defined(VR_STANDALONE_DEATHCRIMSONOX) && VR_STANDALONE_DEATHCRIMSONOX
+#if defined(VR_STANDALONE_HOTD2ARCADE) && VR_STANDALONE_HOTD2ARCADE
 							if (const char *error = vr::standaloneArcadeChipError(romid, archiveLength, read, dst))
 								throw NaomiCartException(strprintf("%s Invalid or truncated chip: %s", error, game->blobs[romid].filename));
 #endif

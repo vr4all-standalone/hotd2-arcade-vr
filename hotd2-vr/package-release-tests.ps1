@@ -41,13 +41,13 @@ function Archive([string]$name, [hashtable]$entries) {
     $path
 }
 try {
-    Check 'Death Crimson application ID' ($appId -eq 'com.vrlightgunhub.deathcrimsonox')
-    Check 'Death Crimson label' ($appLabel -eq 'Death Crimson OX VR')
-    Check 'Death Crimson release base version' ($appVersion -eq '1.0.0')
-    Check 'Death Crimson setup launcher' ($appLauncher -eq 'com.flycast.emulator.DeathCrimsonStartActivity')
-    Check 'Death Crimson PC launcher name' ($playCmd -eq 'Play Death Crimson OX.cmd')
+    Check 'HOTD2 Arcade application ID' ($appId -eq 'com.vrlightgunhub.hotd2arcade')
+    Check 'HOTD2 Arcade label' ($appLabel -eq 'HOTD2 Arcade VR')
+    Check 'HOTD2 Arcade release base version' ($appVersion -eq '1.0.0')
+    Check 'HOTD2 Arcade setup launcher' ($appLauncher -eq 'com.flycast.emulator.Hotd2ArcadeStartActivity')
+    Check 'HOTD2 Arcade PC launcher name' ($playCmd -eq 'Play HOTD2 Arcade.cmd')
     $banned = @('roms/LUPINSHOO.ZIP','roms/deathcoxj/mpr-23514.ic1','gds-0018.cue','gds-0018.gdi',
-        'epr-23524a.ic22','data/gun-lp-pistol.bin','rip/frame.txt','shot_00001.png','naomi.zip')
+        'epr-23524a.ic22','data/gun-lp-pistol.bin','rip/frame.txt','shot_00001.png','hod2bios.zip')
     $entries = @{}; foreach ($name in $banned) { $entries[$name] = 'synthetic fixture' }
     $archive = Archive 'game-data.zip' $entries
     $found = @(Find-GameData $archive)
@@ -60,7 +60,7 @@ try {
     Check 'credited model accepted' (@(Find-UncreditedModels $archive).Count -eq 0)
     $gpl = Get-Content -LiteralPath (Join-Path $repo 'core/deps/picotcp/LICENSE.GPLv3') -Raw
     $mit = Get-Content -LiteralPath (Join-Path $repo 'core/deps/cgltf/LICENSE') -Raw
-    $licence = "Death Crimson OX VR`n$gpl`n$mit"
+    $licence = "HOTD2 Arcade VR`n$gpl`n$mit"
     $archive = Archive 'licensed.zip' @{'LICENSE.txt'=$licence}
     Check 'GPL-3 and cgltf notice accepted' (-not (Find-LicenceFault $archive))
     $archive = Archive 'missing-mit.apk' @{'assets/LICENSE.txt'=$gpl}
@@ -76,28 +76,28 @@ try {
     $policyCheck = Get-Command Test-StandalonePolicy -ErrorAction SilentlyContinue
     Check 'standalone release policy validator exists' ([bool]$policyCheck)
     if ($policyCheck) {
-        Check 'standalone build policy accepted' (Test-StandalonePolicy ([Text.Encoding]::ASCII.GetBytes('Death Crimson OX VR supports the verified Death Crimson OX Japan Rev A cartridge set (deathcoxj.zip).')))
+        Check 'standalone build policy accepted' (Test-StandalonePolicy ([Text.Encoding]::ASCII.GetBytes('HOTD2 Arcade VR supports the measured USA hotd2.zip cartridge and HOTD2-specific hod2bios.zip BIOS. Dreamcast media and other arcade revisions are unsupported.')))
         Check 'research build policy rejected' (-not (Test-StandalonePolicy ([Text.Encoding]::ASCII.GetBytes('generic Flycast research build'))))
     }
     $tree = @('E: manifest', '  E: uses-permission', '    A: android:name(0x01010003)="com.oculus.permission.RENDER_MODEL"',
-        '  E: application', '    E: activity', '      A: android:name(0x01010003)="com.flycast.emulator.DeathCrimsonStartActivity"',
+        '  E: application', '    E: activity', '      A: android:name(0x01010003)="com.flycast.emulator.Hotd2ArcadeStartActivity"',
         '      E: intent-filter', '        E: category', '          A: android:name(0x01010003)="android.intent.category.LAUNCHER"')
-    Check 'manifest launcher parser uses activity owner' (@(Get-LauncherOwners $tree) -join ',' -eq 'com.flycast.emulator.DeathCrimsonStartActivity')
-    $badging = @("package: name='com.vrlightgunhub.deathcrimsonox' versionCode='1' versionName='1.0.0-gabc123'", "application-label:'Death Crimson OX VR'")
+    Check 'manifest launcher parser uses activity owner' (@(Get-LauncherOwners $tree) -join ',' -eq 'com.flycast.emulator.Hotd2ArcadeStartActivity')
+    $badging = @("package: name='com.vrlightgunhub.hotd2arcade' versionCode='1' versionName='1.0.0-gabc123'", "application-label:'HOTD2 Arcade VR'")
     $hasIdentityCheck = [bool](Get-Command Find-AppIdentityFault -ErrorAction SilentlyContinue)
     Check 'APK metadata validator is independently testable' $hasIdentityCheck
     if ($hasIdentityCheck) {
-        Check 'valid Death Crimson APK metadata accepted' (@(Find-AppIdentityFault $badging $tree 'abc123' $false).Count -eq 0)
+        Check 'valid HOTD2 Arcade APK metadata accepted' (@(Find-AppIdentityFault $badging $tree 'abc123' $false).Count -eq 0)
         foreach ($case in @(
-            @('package', 'com.vrlightgunhub.deathcrimsonox', 'com.vrlightgunhub.confmiss'),
+            @('package', 'com.vrlightgunhub.hotd2arcade', 'com.vrlightgunhub.confmiss'),
             @('version code', "versionCode='1'", "versionCode='9'"),
             @('base version', '1.0.0-gabc123', '1.2.0-gabc123'),
             @('commit version', '1.0.0-gabc123', '1.0.0-gdef456'),
-            @('label', 'Death Crimson OX VR', 'Confidential Mission VR'))) {
+            @('label', 'HOTD2 Arcade VR', 'Confidential Mission VR'))) {
             $changed = @($badging | ForEach-Object { $_.Replace($case[1],$case[2]) })
             Check "wrong APK $($case[0]) rejected" (@(Find-AppIdentityFault $changed $tree 'abc123' $false).Count -gt 0)
         }
-        $changed = @($tree | ForEach-Object { $_.Replace('DeathCrimsonStartActivity','CmStartActivity') })
+        $changed = @($tree | ForEach-Object { $_.Replace('Hotd2ArcadeStartActivity','CmStartActivity') })
         Check 'old setup activity rejected' (@(Find-AppIdentityFault $badging $changed 'abc123' $false).Count -gt 0)
         $changed = @($tree | Where-Object { $_ -notmatch 'RENDER_MODEL' })
         Check 'missing controller-model permission rejected' (@(Find-AppIdentityFault $badging $changed 'abc123' $false).Count -gt 0)
@@ -107,11 +107,11 @@ try {
     $hasPcCheck = [bool](Get-Command Find-PcArchiveFault -ErrorAction SilentlyContinue)
     Check 'portable PC archive validator is independently testable' $hasPcCheck
     if ($hasPcCheck) {
-        $files = @('flycast.exe','emu.cfg','README.txt','LICENSE.txt','Play Death Crimson OX.cmd')
-        $readme = 'Death Crimson OX VR. Implementation in progress. roms\deathcoxj.zip roms\naomi.zip Play Death Crimson OX.cmd'
-        $entries = @{'flycast.exe'='synthetic'; 'emu.cfg'="[config]`npvr.rend = 0`nrend.NativeDepthInterpolation = yes`nvr.Xr = yes"; 'README.txt'=$readme; 'LICENSE.txt'=$licence; 'Play Death Crimson OX.cmd'='start "" /D "%~dp0" "%~dp0flycast.exe" "%~dp0roms\deathcoxj.zip"'}
+        $files = @('flycast.exe','emu.cfg','README.txt','LICENSE.txt','Play HOTD2 Arcade.cmd')
+        $readme = 'HOTD2 Arcade VR. Implementation in progress. roms\hotd2.zip roms\hod2bios.zip Play HOTD2 Arcade.cmd'
+        $entries = @{'flycast.exe'='synthetic'; 'emu.cfg'="[config]`npvr.rend = 0`nrend.NativeDepthInterpolation = yes`nvr.Xr = yes"; 'README.txt'=$readme; 'LICENSE.txt'=$licence; 'Play HOTD2 Arcade.cmd'='start "" /D "%~dp0" "%~dp0flycast.exe" "%~dp0roms\hotd2.zip"'}
         $archive = Archive 'portable-valid.zip' $entries
-        Check 'exact portable Death Crimson archive accepted' (@(Find-PcArchiveFault $archive $files).Count -eq 0)
+        Check 'exact portable HOTD2 Arcade archive accepted' (@(Find-PcArchiveFault $archive $files).Count -eq 0)
         $goodConfig = $entries['emu.cfg']
         $entries['emu.cfg'] = $goodConfig.Replace('pvr.rend', 'pvrXrend')
         $archive = Archive 'portable-typo-default.zip' $entries
@@ -120,11 +120,11 @@ try {
         $archive = Archive 'portable-vr-off.zip' $entries
         Check 'VR-off portable default rejected' (@(Find-PcArchiveFault $archive $files).Count -gt 0)
         $entries['emu.cfg'] = $goodConfig
-        $goodLauncher = $entries['Play Death Crimson OX.cmd']
-        $entries['Play Death Crimson OX.cmd'] = $goodLauncher.Replace('deathcoxj.zip','confmiss.zip')
+        $goodLauncher = $entries['Play HOTD2 Arcade.cmd']
+        $entries['Play HOTD2 Arcade.cmd'] = $goodLauncher.Replace('hotd2.zip','confmiss.zip')
         $archive = Archive 'portable-wrong-launch.zip' $entries
         Check 'foreign-game launcher rejected' (@(Find-PcArchiveFault $archive $files).Count -gt 0)
-        $entries['Play Death Crimson OX.cmd'] = $goodLauncher
+        $entries['Play HOTD2 Arcade.cmd'] = $goodLauncher
         # Exercise the actual literal README/config generators and actual launcher, without
         # running the package orchestration or consuming any build artefact.
         $readmeStatement = $ast.EndBlock.Statements | Where-Object {
@@ -135,11 +135,11 @@ try {
         $production = $entries.Clone()
         $production['README.txt'] = $generatedReadme
         $production['emu.cfg'] = $generatedConfig
-        $production['Play Death Crimson OX.cmd'] = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'assets/Play Death Crimson OX.cmd') -Raw
+        $production['Play HOTD2 Arcade.cmd'] = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'assets/Play HOTD2 Arcade.cmd') -Raw
         $archive = Archive 'portable-production-templates.zip' $production
         Check 'production README config and launcher satisfy portable checks' (@(Find-PcArchiveFault $archive $files).Count -eq 0)
-        Check 'packaged README explicitly marks implementation in progress' ($generatedReadme.Contains('Implementation in progress.'))
-        $entries['README.txt'] = $readme.Replace('Death Crimson OX VR','Confidential Mission VR')
+        Check 'packaged README records hardware verification limit' ($generatedReadme.Contains('Physical headset testing remains pending.'))
+        $entries['README.txt'] = $readme.Replace('HOTD2 Arcade VR','Confidential Mission VR')
         $archive = Archive 'portable-wrong-readme.zip' $entries
         Check 'stale CM README rejected' (@(Find-PcArchiveFault $archive $files).Count -gt 0)
         $entries['README.txt'] = $readme
@@ -150,12 +150,12 @@ try {
         $archive = Archive 'portable-missing.zip' $entries
         Check 'missing portable archive file rejected' (@(Find-PcArchiveFault $archive $files).Count -gt 0)
     }
-    $launcher = Join-Path $PSScriptRoot 'assets/Play Death Crimson OX.cmd'
-    Check 'Death Crimson launcher exists' (Test-Path -LiteralPath $launcher)
+    $launcher = Join-Path $PSScriptRoot 'assets/Play HOTD2 Arcade.cmd'
+    Check 'HOTD2 Arcade launcher exists' (Test-Path -LiteralPath $launcher)
     if (Test-Path -LiteralPath $launcher) {
         $text = Get-Content -LiteralPath $launcher -Raw
         Check 'launcher uses portable working directory' ($text -match 'start\s+""\s+/D\s+"%~dp0"')
-        Check 'launcher selects original Death Crimson set' ($text.Contains('%~dp0roms\deathcoxj.zip'))
+        Check 'launcher selects original HOTD2 Arcade set' ($text.Contains('%~dp0roms\hotd2.zip'))
     }
     Write-Host "Release checks: $script:checks total, $script:failures failed"
 } finally {

@@ -1,5 +1,5 @@
 @echo off
-rem Build Death Crimson OX VR for the Quest: this Flycast fork, arm64, optimised "vr" build type.
+rem Build HOTD2 Arcade VR for the Quest: this Flycast fork, arm64, optimised "vr" build type.
 rem Needs JDK 17 and the Android SDK with NDK 29 and CMake 3.22.1. A Microsoft JDK 17 in
 rem Program Files is picked up; otherwise set JAVA_HOME. ANDROID_HOME defaults to
 rem %LOCALAPPDATA%\Android\Sdk.

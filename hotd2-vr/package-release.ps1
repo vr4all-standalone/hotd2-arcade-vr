@@ -1,17 +1,17 @@
 <#
-  Packages Death Crimson OX VR builds for the Quest and PC (implementation remains in progress)
+  Packages HOTD2 Arcade VR builds for the Quest and PC (implementation remains in progress)
   in dist\ (packaging checks do not establish gameplay or headset validation):
 
-    death-crimson-ox-vr-quest.apk   the Quest app (Quest 3, 3S, 2, Pro)
-    death-crimson-ox-vr-pcvr.zip    the PC version with VR on (flycast.exe, emu.cfg, README.txt,
-                                        LICENSE.txt, Play Death Crimson OX.cmd; with the bundled
+    hotd2-arcade-vr-quest.apk   the Quest app (Quest 3, 3S, 2, Pro)
+    hotd2-arcade-vr-pcvr.zip    the PC version with VR on (flycast.exe, emu.cfg, README.txt,
+                                        LICENSE.txt, Play HOTD2 Arcade.cmd; with the bundled
                                         models also CREDITS.txt and data\models\)
 
   Neither holds anything of the game: the players bring their own, and what the app makes from it
   is made on the spot. Both are checked for that (the names in their file lists: discs, keys,
   rips, frame grabs, models made from a game), and the APK for its signer: signed with the public
   debug key (no release key, see make-release-key.ps1) it is refused, since anyone could sign an
-  "update" of the app with that key. The APK is also checked for being Death Crimson OX VR
+  "update" of the app with that key. The APK is also checked for being HOTD2 Arcade VR
   (its package, version and label, and its start screen the only entry in the headset's library),
   and the zip for holding exactly its files, with a README.txt that names no other game.
 
@@ -50,11 +50,11 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 # The app: its application ID, label and version (shell\android-studio\flycast\build.gradle.kts and
 # src\vr\AndroidManifest.xml), its library entry, and the PC zip's start script (hotd2-vr\assets).
-$appId = 'com.vrlightgunhub.deathcrimsonox'
-$appLabel = 'Death Crimson OX VR'
+$appId = 'com.vrlightgunhub.hotd2arcade'
+$appLabel = 'HOTD2 Arcade VR'
 $appVersion = '1.0.0'
-$appLauncher = 'com.flycast.emulator.DeathCrimsonStartActivity'
-$playCmd = 'Play Death Crimson OX.cmd'
+$appLauncher = 'com.flycast.emulator.Hotd2ArcadeStartActivity'
+$playCmd = 'Play HOTD2 Arcade.cmd'
 
 # What must never be in a release: game discs and keys, rips (rip\), frame grabs, models made
 # from a game (the app makes those on the player's device, from the player's game), and archives
@@ -189,7 +189,7 @@ function Read-ZipEntry([string]$archive, [string]$name) {
 # The policy-disabled executable is for local research only. Its optimized binary omits
 # the rejection diagnostic; require the compiled guard in both platform artifacts.
 function Test-StandalonePolicy([byte[]]$bytes) {
-    $bytes -and [Text.Encoding]::ASCII.GetString($bytes).Contains('Death Crimson OX VR supports the verified Death Crimson OX Japan Rev A cartridge set (deathcoxj.zip).')
+    $bytes -and [Text.Encoding]::ASCII.GetString($bytes).Contains('HOTD2 Arcade VR supports the measured USA hotd2.zip cartridge and HOTD2-specific hod2bios.zip BIOS. Dreamcast media and other arcade revisions are unsupported.')
 }
 # A built binary names this commit: the version core\version.h gave it (v<tag>-<n>-g<commit>).
 function Test-NamesCommit([string]$what, [byte[]]$bytes, [string]$hash) {
@@ -253,10 +253,10 @@ function Find-PcArchiveFault([string]$archive, [string[]]$expectedFiles) {
     }
     $readmeBytes = Read-ZipEntry $archive 'README.txt'
     $readme = if ($readmeBytes) { [Text.Encoding]::ASCII.GetString($readmeBytes) } else { '' }
-    foreach ($required in @($appLabel, 'roms\deathcoxj.zip', 'roms\naomi.zip', $playCmd)) {
+    foreach ($required in @($appLabel, 'roms\hotd2.zip', 'roms\hod2bios.zip', $playCmd)) {
         if (-not $readme.Contains($required)) { "README.txt does not name $required" }
     }
-    foreach ($other in @('Light Gun Hub', 'House of the Dead', 'Maze of the Kings')) {
+    foreach ($other in @('Light Gun Hub', 'Death Crimson OX', 'Maze of the Kings')) {
         if ($readme -match [regex]::Escape($other)) { "README.txt names $other; its play instructions must be for $appLabel" }
     }
     $configBytes = Read-ZipEntry $archive 'emu.cfg'
@@ -267,7 +267,7 @@ function Find-PcArchiveFault([string]$archive, [string[]]$expectedFiles) {
     $launcherBytes = Read-ZipEntry $archive $playCmd
     $launcher = if ($launcherBytes) { [Text.Encoding]::ASCII.GetString($launcherBytes) } else { '' }
     if ($launcher -notmatch 'start\s+""\s+/D\s+"%~dp0"' -or -not $launcher.Contains('"%~dp0flycast.exe"') -or
-        -not $launcher.Contains('"%~dp0roms\deathcoxj.zip"')) { "$playCmd does not launch the original set with a portable working directory" }
+        -not $launcher.Contains('"%~dp0roms\hotd2.zip"')) { "$playCmd does not launch the original set with a portable working directory" }
 }
 # the working tree as committed (the gamesdk submodule's local change aside)
 $head = Invoke-Git rev-parse HEAD
@@ -306,9 +306,9 @@ if (-not $SkipBuild) {
 	if ($LASTEXITCODE -ne 0) { throw 'build-quest.cmd failed' }
 }
 New-Item -ItemType Directory -Force $dist | Out-Null
-$apkOut = Join-Path $dist 'death-crimson-ox-vr-quest.apk'
-$zip = Join-Path $dist 'death-crimson-ox-vr-pcvr.zip'
-$stage = Join-Path $dist 'death-crimson-ox-vr-pcvr'
+$apkOut = Join-Path $dist 'hotd2-arcade-vr-quest.apk'
+$zip = Join-Path $dist 'hotd2-arcade-vr-pcvr.zip'
+$stage = Join-Path $dist 'hotd2-arcade-vr-pcvr'
 foreach ($f in $apkOut, $zip) { if (Test-Path $f) { (Get-Item $f).Delete() } }   # never leave an old one
 
 # the Quest app: who signed it
@@ -368,7 +368,7 @@ if (-not $AllowDebugKey) {
 }
 if (-not (Test-StandalonePolicy (Read-ZipEntry $apk 'lib/arm64-v8a/libflycast.so')) -or
     -not (Test-StandalonePolicy ([IO.File]::ReadAllBytes((Join-Path $repo 'build-win\flycast.exe'))))) {
-    throw 'Research build with standalone game policy OFF cannot be packaged. Rebuild both platforms with VR_STANDALONE_DEATHCRIMSONOX=ON.'
+    throw 'Research build with standalone game policy OFF cannot be packaged. Rebuild both platforms with VR_STANDALONE_HOTD2ARCADE=ON.'
 }
 Copy-Item $apk $apkOut
 
@@ -421,45 +421,40 @@ rend.NativeDepthInterpolation = yes
 vr.Xr = yes
 '@
 $readme = @'
-Death Crimson OX VR, PC development build
+HOTD2 Arcade VR, experimental PC VR build
 
-Implementation in progress. See the source validation report and physical headset checklist
-for the current verified scope. This build inherits Flycast and mikermak's hotd2-vr
-(https://github.com/mikermak/hotd2-vr), Confidential Mission VR and Lupin VR.
+The original Sega NAOMI arcade cartridge in stereo VR. Physical headset testing remains pending.
 
-1. Make a folder named roms next to flycast.exe and add your own complete MAME cartridge set:
-     roms\deathcoxj.zip   Death Crimson OX, Japan Rev A
-     roms\naomi.zip       supported NAOMI BIOS, or the BIOS file inside deathcoxj.zip
-   No CHD, CUE or GDI is needed. Japan Rev A contains epr-23524a.ic22 (4 MiB,
-   CRC b60e113e), plus all ten mpr-23514.ic1 through mpr-23523.ic10 chips (8 MiB each).
-   An older merged archive called deathcox.zip may contain these Japan chips: keep the original
-   unchanged and use a separate complete copy named deathcoxj.zip. Modern deathcox.zip is USA
-   (dcox_us.ic22), and deathcoxo.zip is original Japan: those revisions are not verified here.
-2. Connect the headset to the active OpenXR runtime (for example SteamVR or Quest Link).
-3. Double-click "Play Death Crimson OX.cmd". It starts flycast.exe with roms\deathcoxj.zip
-   and the archive folder as its working directory, so this copy uses its own emu.cfg.
+1. Put your complete owned USA MAME set in roms\hotd2.zip beside flycast.exe.
+   It needs epr-21585.ic22 (2 MiB, CRC b23d1a0c) and all twenty 8 MiB MPR ROMs.
+2. Put your HOTD2-specific BIOS in roms\hod2bios.zip, or embed a supported BIOS in hotd2.zip.
+   Supported 2 MiB files: epr-21331.ic27, epr-21330.ic27, epr-21329.ic27.
+   An ordinary NAOMI BIOS cannot replace this. No CHD is needed; Dreamcast media is unsupported.
+3. Connect your headset to the active OpenXR runtime and run "Play HOTD2 Arcade.cmd".
+   This launcher keeps this portable copy's configuration and cache in its own folder.
 
-Controls: either trigger shoots and selects the hand in single-player. In two-player play,
-P1 defaults to the left hand and P2 to the right. The Two players setting defaults to P1 left / P2 right; choose P1 right / P2 left to reverse them.
-A/X start the player on that controller; B/Y reload. Left Menu opens settings, left stick
-click recenters, and right stick click toggles the laser. The paused menu includes gun choice,
-gun angle, reload modes, haptics, world size, panel distance, wider view, How to play and Quit.
-First launch prepares the in-game soldier pistol from your own cartridge and keeps a validated
-cache. B/Y skips it; corrupt caches rebuild. Arcade gun, Zapper and custom GLBs remain available.
-No generated native model, save state, game ROM or BIOS is supplied. Physical headset checks remain pending.
-emu.cfg enables VR (vr.Xr = yes), OpenGL (pvr.rend = 0) and native depth interpolation.
+First launch runs the arcade's opening scene to prepare its pistol from your own game.
+B or Y skips preparation. Arcade gun, Zapper and custom GLB choices are also available.
+Default two-player assignment: P1 left, P2 right. X starts P1; A joins P2. The paused
+Two players setting reverses the hands and their Start/reload controls. Solo play can use
+either trigger. B/Y reload; the Reload setting selects shoot-off-screen or point-off-screen.
+Left Menu pauses for settings; left stick click recenters; right stick click toggles the laser.
+Gun, angle, reload, hands, laser, haptics, world size, panel distance and wider view are saved.
 
-No game is included. Unofficial fan project, not affiliated with Sega or Ecole.
+Only the USA hotd2 arcade revision is adapted. Later chapters and endings remain unverified.
+See the corresponding source's validation notes and headset checklist for detailed scope.
+No game ROM, BIOS, generated game model, cabinet save or signing material is supplied.
 
-Credits: Flycast by flyinghead and contributors (https://github.com/flyinghead/flycast,
-GPL-2.0-or-later). hotd2-vr by mikermak (GPL-2.0-or-later).
-The gun: "Namco Arcade Gun" by Martoscar
-(https://sketchfab.com/3d-models/namco-arcade-gun-15fbd5b9add94a34b5c21746e3dd32be), CC BY 4.0
-(https://creativecommons.org/licenses/by/4.0/); changed: re-oriented, quantised, textures and
-materials dropped, recoloured, converted to C++. The OpenXR loader by Khronos, Apache-2.0.
+Credits: Flycast by flyinghead and contributors, GPL-2.0-or-later; mikermak's hotd2-vr;
+the shared standalone VR adaptations and their retained source notices.
+Namco Arcade Gun by Martoscar, CC BY 4.0:
+https://sketchfab.com/3d-models/namco-arcade-gun-15fbd5b9add94a34b5c21746e3dd32be
+Re-oriented, quantised, textures/materials removed, recoloured and converted to C++.
+OpenXR loader by Khronos, Apache-2.0. Optional bundled model credits are in CREDITS.txt.
 
-Licence: this build is distributed under the GNU GPL version 3 (LICENSE.txt). A distributed
-build must be accompanied by the corresponding source for its recorded commit.
+Licence: this build is distributed under GNU GPL version 3 (LICENSE.txt), including cgltf's
+MIT notice. Distribute its corresponding source with any redistributed binary.
+Unofficial fan project, not affiliated with Sega or Meta.
 '@
 if ($modelFiles.Count) {
 	$readme = $readme -replace '(?m)^Licence: this build', ("The other guns and the controllers, in data\models, are 3D models made by others, under their`n" +
@@ -482,12 +477,12 @@ try {
 	}
 } finally { $archive.Dispose(); $out.Dispose() }
 
-# The zip contains exactly its files, portable defaults and launcher, and Death Crimson's own instructions.
+# The zip contains exactly its files, portable defaults and launcher, and HOTD2 Arcade's own instructions.
 $zipFiles = @('flycast.exe', 'emu.cfg', 'README.txt', 'LICENSE.txt', $playCmd) + $modelFiles
 $zipFaults = @(Find-PcArchiveFault $zip $zipFiles)
 $zipGood = $zipFaults.Count -eq 0
 if ($zipGood) {
-    Write-Host "zip check: $(Split-Path -Leaf $zip) holds exactly $($zipFiles -join ', '), with Death Crimson instructions and portable defaults"
+    Write-Host "zip check: $(Split-Path -Leaf $zip) holds exactly $($zipFiles -join ', '), with HOTD2 Arcade instructions and portable defaults"
 } else {
     $zipFaults | ForEach-Object { Write-Host "zip check: $_" -ForegroundColor Red }
 }

@@ -74,6 +74,8 @@ struct GunTarget
 	// Optional: select one spatially joined instance when a pass draws several copies.
 	// Distance between corners in game units; 0 keeps the existing whole-pass selection.
 	float instanceJoinDistance = 0.f;
+	// One model split between opaque and translucent lists (HOTD2 pistol: 28 + 2).
+	bool acrossLists = false;
 
 	bool used() const { return file != nullptr && file[0] != 0; }
 	bool has(uint32_t tex) const {

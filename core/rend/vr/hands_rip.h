@@ -39,7 +39,7 @@ namespace vr::hands
 // and the file it's kept in, in the data directory.
 struct Source
 {
-	enum Kind { None, AgentsPistol, HerosStaff, CmGuns, LupinGun, DeathGun } kind = None;
+	enum Kind { None, AgentsPistol, HerosStaff, CmGuns, LupinGun, DeathGun, AttractGun = LupinGun } kind = None;
 	const char *file = "";
 	Parts pistol {};		// AgentsPistol: the textures in the game over scene
 	StaffParts staff {};	// HerosStaff: the textures in the attract demo and the story's intro
@@ -48,6 +48,11 @@ struct Source
 	GunTarget guns[3] {};
 	// LupinGun: watch the neutral attract sequence until a complete gun appears.
 	float prepSeconds = 180.f;
+	// Optional measured Start pulse before observing the opening scene (HOTD2 arcade).
+	float prepStartSeconds = -1.f;
+    // First gun/body texture identity when native scene allocation moves it in VRAM.
+    // No pixels are stored here; the user's game supplies them.
+    uint32_t gunTextureCrc = 0, gunTextureBytes = 0, gunTextureSize = 0;
 	bool gunModels() const { return kind == CmGuns || kind == LupinGun || kind == DeathGun; }
 	// The file modelPath() names (CmGuns: the agents' pistol's, the one the run is for, for the
 	// "made before" line; the headset reads each gun's own file: xr_hands.h gunModel())
