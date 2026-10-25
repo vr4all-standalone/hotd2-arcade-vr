@@ -1,19 +1,29 @@
 <div align="center">
 
-<img src="docs/images/hotd2-arcade-banner.svg" alt="The House of the Dead 2 — Arcade VR" width="100%" />
+<img src="hotd2-vr/assets/hotd2-arcade-banner.png" alt="The House of the Dead 2 Arcade VR — standalone Meta Quest and PC VR" width="100%" />
 
 # The House of the Dead 2 — Arcade VR
-### Sega NAOMI · Standalone Meta Quest & Windows PC VR
+### Original SEGA NAOMI Light-Gun Action · Standalone Meta Quest & PC VR
 
-**The original arcade cartridge in stereo VR, with tracked guns and two players on one headset.**
+[![Release v1.0.0](https://img.shields.io/badge/Release-v1.0.0_Experimental-bf3d53?style=for-the-badge)](https://github.com/vr4all-standalone/hotd2-arcade-vr/releases/latest)
+[![Quest and PC VR](https://img.shields.io/badge/Headset-Quest_%C2%B7_PC_VR_OpenXR-blue?style=for-the-badge)](#quest-setup)
+[![Original arcade game required](https://img.shields.io/badge/Your_Game-hotd2_USA_Arcade-orange?style=for-the-badge)](#your-game-files)
 
-[Controls](#controls) · [Quest setup](#quest-setup) · [PC VR setup](#pc-vr-setup) · [Build and validation](#build-and-validation)
+**[⬇️ Quest APK](https://github.com/vr4all-standalone/hotd2-arcade-vr/releases/latest/download/hotd2-arcade-vr-quest.apk)** · **[🖥️ PC VR ZIP](https://github.com/vr4all-standalone/hotd2-arcade-vr/releases/latest/download/hotd2-arcade-vr-pcvr.zip)** · **[🎮 Controls](#controls)**
+
+[Checksums](https://github.com/vr4all-standalone/hotd2-arcade-vr/releases/latest/download/SHA256SUMS.txt) · [All releases](https://github.com/vr4all-standalone/hotd2-arcade-vr/releases)
+
+**[🌐 VR4ALL — Standalone VR Mod Installer](https://github.com/vr4all-standalone/vr4all-standalone-vr-mod-installer)**
 
 </div>
 
+---
+
+## Overview
+
 Experimental standalone adaptation of [mikermak's HOTD2 VR engine](https://github.com/mikermak/hotd2-vr), using the shared menus and controls from Confidential Mission VR, Lupin VR and Death Crimson OX VR. This version boots the **NAOMI arcade `hotd2` cartridge**. Dreamcast discs are unsupported.
 
-No game or BIOS is included. Supply your own files. Unofficial fan project, unaffiliated with Sega, Meta or the Flycast project. Physical headset testing remains pending.
+No game or BIOS is included. Supply your own files. Unofficial fan project, unaffiliated with Sega, Meta or the Flycast project. Physical headset testing remains pending. The [banner](hotd2-vr/assets/hotd2-arcade-banner.md) is AI-generated promotional artwork based on local arcade character, scene and pistol references; it is not a headset screenshot.
 
 ## What it does
 
