@@ -57,3 +57,13 @@ Use `hotd2-vr/hotd2-arcade-test.ps1` with `VRLGH_GAMES` pointing to your own pri
 Synthetic release validation passes 43 checks. Strict packaging additionally requires a clean source commit, matching source identifiers in both native binaries and APK metadata, a non-debug APK signer, exact portable PC contents, model attribution and licence texts. It excludes ROMs, BIOS, dumps, generated game models, cabinet saves and signing material. Check the packaged SHA256 file for final artifact hashes.
 
 A fresh independent review found and resolved credit snapshot state and input compatibility-digest omissions. Follow-up review found no remaining concrete defects. This source review does not replace the [physical headset checklist](hotd2-arcade-headset-checklist.md).
+
+## Blood-color update (1.0.1)
+
+The paused Blood color row selects Green or Red, saves vr.RedBlood immediately and applies it on the next cold game start. A pending choice shows (next start). A loaded snapshot always retains that reminder, because the snapshot can restore older effect resources.
+
+The measured USA program reads the native cabinet blood byte at 0x0C3D109F in the resource selector at 0x0A34A6. Its mov.b @r3,r4 at 0x0A34AA supplies index0 for red resource193 (scr_blood_red.bin) or index1 for green resource194 (scr_blood_green.bin), using the native table at 0x140378. The adaptation substitutes only that input instruction with mov #0/#1,r4. Code, pointer and resource-table guards require the measured revision; unexpected words prevent every blood write. The override leaves cabinet data, EEPROM, difficulty, life and gun calibration untouched.
+
+The selected index is latched at Event::Start, so changing the menu during play cannot mix already loaded effects. Its actual code write is included in the compatibility digest. Writes occur only when the word differs; native tests cover stock/red/green transitions, idempotence, every failed blood guard, unknown selector code, wrong game code and whole-RAM side-effect isolation. The native suite passes1172 checks, policy90, shared gun input23, model/cache16 and packaging43. Android JVM suite also passes.
+
+Both cold-start OpenXR simulator runs passed: the native word became E401 for Green and E400 for Red exactly once; changing the paused menu saved the opposite choice, showed (next start), survived closing/reopening, and did not switch the active native index during the running game. Private captures and logs remain under build-win/vrtest/hotd2-blood-*; no game bytes are committed. The native cabinet byte remained1 in both runs. Physical headset checks remain pending.

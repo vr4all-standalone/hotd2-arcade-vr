@@ -83,6 +83,8 @@ Extract `hotd2-arcade-vr-pcvr.zip` into its own folder. Place your files in `rom
 | Laser | Right thumbstick click |
 | World size / gun size | Grip + thumbstick up/down or left/right |
 
+**Blood color:** open Settings with the left Menu button and choose **Blood color: Red** or **Green**. The choice is saved immediately and takes effect the next time you start the game; a pending change says **(next start)**. This uses the arcade game's own blood-effect resources. Loading an old save state can restore its old effects; start without a save state to apply the new color.
+
 The standalone free-play option supplies cabinet credits automatically. Settings pause emulation. Holding a trigger through a hand swap does not fire a new round when the menu closes.
 
 ## Build and validation

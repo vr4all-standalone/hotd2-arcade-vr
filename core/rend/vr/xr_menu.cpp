@@ -15,6 +15,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -29,7 +30,7 @@ constexpr float Distance = 1.2f, BelowEyes = 0.1f;
 constexpr int Left = 0, Right = 1;
 
 const char *const Labels[Rows] { "Resume", "Recenter", "Gun", "Gun angle", "Reload", "Two players", "Laser", "Haptics",
-		"World size", "Panel distance", "Wider view", "How to play", "Quit" };
+		"World size", "Panel distance", "Wider view", "Blood color", "How to play", "Quit" };
 const char *const HapticsNames[4] { "Off", "Light", "Medium", "Strong" };
 // vr.Haptics' words, saved by the Haptics row (hapticsLevel() reads them, and 1.2's numbers)
 const char *const HapticsWords[4] { "off", "light", "medium", "strong" };
@@ -65,10 +66,15 @@ double seconds()
 
 // vr.Widen as the game started with it: it widens at the start only, so a change says "(next start)"
 bool widenAtStart = true;
+bool redBloodAtStart = false;
+std::atomic<bool> bloodStateRestored { false };
 struct WidenRegistration
 {
 	WidenRegistration() {
-		EventManager::listen(Event::Start, [](Event, void *) { widenAtStart = config::VrWiden; });
+		EventManager::listen(Event::Start, [](Event, void *) { widenAtStart = config::VrWiden; redBloodAtStart = config::VrRedBlood; bloodStateRestored = false; });
+		// A snapshot also restores the old effect textures. Only a cold start
+		// guarantees the saved choice has reloaded every native blood resource.
+		EventManager::listen(Event::LoadState, [](Event, void *) { bloodStateRestored = true; });
 	}
 } widenRegistration;
 
@@ -96,7 +102,7 @@ int gunAngle() {
 }
 // (Hands too: either way, its other value)
 bool onOff(int row) {
-	return row == Hands || row == Laser || row == WiderView || row == HowToPlay;
+	return row == Hands || row == Laser || row == WiderView || row == BloodColor || row == HowToPlay;
 }
 
 std::string value(int row)
@@ -132,6 +138,8 @@ std::string value(int row)
 		return s;
 	case WiderView:
 		return std::string(config::VrWiden ? "On" : "Off") + (config::VrWiden != widenAtStart ? " (next start)" : "");
+	case BloodColor:
+		return std::string(config::VrRedBlood ? "Red" : "Green") + (bloodStateRestored || config::VrRedBlood != redBloodAtStart ? " (next start)" : "");
 	case HowToPlay:
 		return howToPlayOn() ? "On" : "Off";
 	default:
@@ -262,6 +270,10 @@ void change(int row, int dir, int hand)
 	case WiderView:
 		config::VrWiden.set(!config::VrWiden);
 		config::saveBool("config", "vr.Widen", config::VrWiden);
+		break;
+	case BloodColor:
+		config::VrRedBlood.set(!config::VrRedBlood);
+		config::saveBool("config", "vr.RedBlood", config::VrRedBlood);
 		break;
 	case HowToPlay:
 		// on or off, the menu staying open (closing it turns it off: xr_host.h). The next frame the

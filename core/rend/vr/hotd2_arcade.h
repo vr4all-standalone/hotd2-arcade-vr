@@ -70,6 +70,27 @@ template<class Read16,class Write16> bool applyInput(Read16 read16,Write16 write
     if((mode&255)!=2)write16(0x3D10A2,(mode&0xff00)|2);
     return true;
 }
+// The native blood-resource selector is measured separately from the gun code.
+inline constexpr unsigned BloodColorRead = 0x0A34AA;
+inline constexpr Guard BloodColorGuards[]={
+    {0x0A34A6,0xD33C}, {0x0A34A8,0x4F22}, {0x0A34AC,0xD039},
+    {0x0A34AE,0x4408}, {0x0A34B0,0xB002}, {0x0A34B2,0x044E},
+    {0x0A3594,0x0378}, {0x0A3596,0x0C14},
+    {0x0A3598,0x109F}, {0x0A359A,0x0C3D},
+    {0x140378,193}, {0x14037A,0}, {0x14037C,194}, {0x14037E,0}
+};
+template<class Read16,class Write16> bool applyBloodColor(bool red,Read16 read16,Write16 write16) {
+    if(!codeValid(read16))return false;
+    for(const auto& g:BloodColorGuards)if(read16(g.offset)!=g.word)return false;
+    const unsigned current=read16(BloodColorRead);
+    if(current!=0x6430 && current!=0xE400 && current!=0xE401)return false;
+    // The game reads its cabinet setting into r4, then indexes its own red/green
+    // blood-resource table. Supply that same native index without changing its
+    // EEPROM, checksums, difficulty, life settings or gun calibration.
+    const unsigned wanted=red?0xE400:0xE401; // mov #0/#1,r4
+    if(current!=wanted)write16(BloodColorRead,wanted);
+    return true;
+}
 struct Gun { bool known=false,active=false;std::uint8_t ammo=0,magazine=6;std::uint32_t shots=0; };
 template<class Read16,class Read32> Gun readGun(int player,Read16 read16,Read32 read32) {
     Gun g;

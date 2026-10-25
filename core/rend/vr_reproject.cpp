@@ -754,6 +754,7 @@ static std::vector<GameProfile> makeProfiles()
 	return list;
 }
 static const std::vector<GameProfile> profiles = makeProfiles();
+static bool hotd2RedBloodAtStart = false;
 static const GameProfile *activeProfile;	// the game being played (or none)
 
 static bool focalCodeThere(const GameProfile& profile)
@@ -852,6 +853,7 @@ static std::atomic<bool> vmPlayersKnown { false };
 
 static void applyGameProfile(Event, void *)
 {
+    hotd2RedBloodAtStart = config::VrRedBlood;
 	std::fill(std::begin(fovLiterals), std::end(fovLiterals), 0u);
 	std::fill(std::begin(markerTextures), std::end(markerTextures), 0u);
 	std::fill(std::begin(p2PromptTextures), std::end(p2PromptTextures), 0u);
@@ -956,9 +958,16 @@ static void applyProfileWrites(Event, void *)
 	if (prof == nullptr || !config::VrReproject || !profileCodeThere(*prof))
 		return;
 
-    if (prof->gunRam.hotd2Arcade)
+    if (prof->gunRam.hotd2Arcade) {
+        hotd2::applyBloodColor(hotd2RedBloodAtStart,
+            [](unsigned a) { return ReadMem16_nommu(0x8C000000u+a); },
+            [](unsigned a,unsigned w) {
+                WriteMem16_nommu(0x8C000000u+a,u16(w));
+                NOTICE_LOG(RENDERER, "VR: native blood color %s (game resource selector)", w==0xE400?"Red":"Green");
+            });
         hotd2::applyInput([](unsigned a) { return ReadMem16_nommu(0x8C000000u+a); },
             [](unsigned a,unsigned w) { WriteMem16_nommu(0x8C000000u+a,u16(w)); });
+    }
 	if (prof->fovPatch[0].offset != 0 && config::VrWidenFov && config::VrFovScale > 1.f)
 	{
 		bool stock = true;
@@ -1004,6 +1013,7 @@ void netplayDigest(MD5Sum& md5)
             md5.add(hotd2::InputBase).add(hotd2::InputStride);
             md5.add(hotd2::Calibration);
             md5.add(u32(0x3D10A2)).add(u16(2));
+            md5.add(hotd2::BloodColorRead).add(u16(hotd2RedBloodAtStart?0xE400:0xE401));
         }
 	}
 }

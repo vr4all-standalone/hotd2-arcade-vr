@@ -38,5 +38,29 @@ int main(){
  for(int player=0;player<2;player++)for(unsigned i=0;i<6;i++)check(r16(InputBase+player*InputStride+24+i*2)==Calibration[i],"live calibration for both guns");
  for(int x=0;x<640;x++){int raw=(x*65535/639)>>1;int result=nativeAxis(raw,Calibration[0],Calibration[1],Calibration[2],-300,300)+320;check(std::abs(result-x)<=1&&result>=0&&result<640,"whole-width native aim within one pixel");}
  for(int y=0;y<480;y++){int raw=(y*65535/479)>>1;int result=240-nativeAxis(raw,Calibration[3],Calibration[4],Calibration[5],220,-220);check(std::abs(result-y)<=1&&result>=0&&result<480,"whole-height native aim within one pixel");}
+ // A reversed native index, unguarded code patch, EEPROM mutation or repeated
+ // code-page invalidation must fail these checks. Expectations come from the
+ // measured SH4 selector: native 0 selects resource193 (red), 1 resource194 (green).
+ for(const auto& guard:BloodColorGuards)w16(guard.offset,guard.word);
+ w16(0x0A34AA,0x6430);
+ auto beforeBlood=ram;
+ writes=0;
+ auto bloodWrite=[&](unsigned a,unsigned word){++writes;w16(a,word);};
+ check(applyBloodColor(true,r16,bloodWrite),"measured native red blood selector accepted");
+ check(r16(0x0A34AA)==0xE400 && writes==1,"red selects native index zero with one code write");
+ auto expectedBlood=beforeBlood;expectedBlood[0x0A34AA]=0;expectedBlood[0x0A34AB]=0xE4;
+ check(ram==expectedBlood,"red changes only the guarded native selector, no settings or EEPROM bytes");
+ check(applyBloodColor(true,r16,bloodWrite)&&writes==1,"red is idempotent without invalidating code every frame");
+ check(applyBloodColor(false,r16,bloodWrite)&&r16(0x0A34AA)==0xE401,"green restores native index one");
+ writes=0;check(applyBloodColor(false,r16,bloodWrite)&&writes==0,"green is idempotent");
+ for(const auto& guard:BloodColorGuards){
+  w16(guard.offset,guard.word^1);writes=0;
+  check(!applyBloodColor(true,r16,bloodWrite)&&writes==0,"unknown blood code, pointer or resource table blocks writes");
+  w16(guard.offset,guard.word);
+ }
+ w16(0x0A34AA,0xFFFF);writes=0;
+ check(!applyBloodColor(true,r16,bloodWrite)&&writes==0,"unknown selector instruction is never overwritten");
+ w16(0x0A34AA,0x6430);w16(CodeGuards[0].offset,0);writes=0;
+ check(!applyBloodColor(true,r16,bloodWrite)&&writes==0,"different or unloaded arcade revision blocks blood override");
  std::printf("PASS HOTD2 native state/input %d checks\n",checks);
 }

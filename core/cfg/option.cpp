@@ -141,6 +141,7 @@ Option<std::string> VrHaptics("vr.Haptics", "medium");	// the knock in the hand:
 Option<int> VrGun("vr.Gun", 1);	// the gun drawn: 1 the in-game pistol, 4 (and over) a folder gun, the one vr.GunFile names (guns/: the bundled Arcade gun and Zapper, the player's own; xr_own.h); any other (1.1's 0 auto, 2 the cabinet gun, 3 the arcade gun) reads as 1 (the VR menu)
 Option<std::string> VrGunFile("vr.GunFile", "");	// with vr.Gun 4: the player's own gun, its file name in guns/ without .glb (the VR menu)
 Option<int> VrGunAngle("vr.GunAngle", 0);	// the gun tilted in the hand about its grip, degrees, + the muzzle up; read as -30 to 30 (the VR menu's Gun angle)
+Option<bool> VrRedBlood("vr.RedBlood", false); // HOTD2 native blood resource choice; next game start
 Option<int> VrReload("vr.Reload", 0);	// 0 reload by shooting away from the screen; 1 also by pointing away from it, once each time (the VR menu's Reload)
 Option<bool> VrSwapP1P2("vr.SwapP1P2", true); // two-player assignment only: on P1 left/P2 right, off P1 right/P2 left; solo follows either trigger
 Option<bool> CustomTextures("rend.CustomTextures");

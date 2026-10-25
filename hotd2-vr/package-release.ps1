@@ -29,7 +29,7 @@
   (core\deps\cgltf\LICENSE) in it; -CheckOnly checks that too.
 
   A release is built from a commit, the one its published source is: the working tree must be
-  clean (the gamesdk submodule's local change aside), and the APK's versionName (1.0.0-g<commit>),
+  clean (the gamesdk submodule's local change aside), and the APK's versionName (1.0.1-g<commit>),
   its libflycast.so and flycast.exe must all name HEAD (a -SkipBuild after a new commit fails
   that). -AllowDebugKey test builds skip both checks.
 
@@ -52,7 +52,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 # src\vr\AndroidManifest.xml), its library entry, and the PC zip's start script (hotd2-vr\assets).
 $appId = 'com.vrlightgunhub.hotd2arcade'
 $appLabel = 'HOTD2 Arcade VR'
-$appVersion = '1.0.0'
+$appVersion = '1.0.1'
 $appLauncher = 'com.flycast.emulator.Hotd2ArcadeStartActivity'
 $playCmd = 'Play HOTD2 Arcade.cmd'
 
@@ -227,7 +227,7 @@ function Find-AppIdentityFault([string[]]$badgingLines, [string[]]$manifestTree,
     $badging = $badgingLines | Where-Object { $_ -match '^package:' } | Select-Object -First 1
     $wantVersion = [regex]::Escape("$appVersion-g") + $(if ($testBuild) { '[0-9a-f]+' } else { [regex]::Escape($shortHash) })
     if ($badging -notmatch "^package: name='$([regex]::Escape($appId))'") { "the package is not $appId" }
-    if ($badging -notmatch "versionCode='1'") { 'the versionCode is not 1' }
+    if ($badging -notmatch "versionCode='2'") { 'the versionCode is not 2' }
     if ($badging -notmatch "versionName='$wantVersion'") {
         "the versionName is not $appVersion-g$(if ($testBuild) { '<commit>' } else { $shortHash })"
     }
@@ -439,7 +439,10 @@ Default two-player assignment: P1 left, P2 right. X starts P1; A joins P2. The p
 Two players setting reverses the hands and their Start/reload controls. Solo play can use
 either trigger. B/Y reload; the Reload setting selects shoot-off-screen or point-off-screen.
 Left Menu pauses for settings; left stick click recenters; right stick click toggles the laser.
-Gun, angle, reload, hands, laser, haptics, world size, panel distance and wider view are saved.
+Gun, angle, reload, hands, laser, haptics, world size, panel distance, wider view and blood color are saved.
+Blood color: choose Red or Green in the paused settings menu, then restart the game.
+It uses the arcade game's original effects; (next start) marks a pending change.
+Loading a save state can restore its old effects; start without a state to apply the color.
 
 Only the USA hotd2 arcade revision is adapted. Later chapters and endings remain unverified.
 See the corresponding source's validation notes and headset checklist for detailed scope.
