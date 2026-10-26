@@ -848,11 +848,15 @@ static u32 p2PromptTextures[4];	// ...and GameProfile::p2PromptTextures
 // (the headset's); valid false: not read yet.
 static std::mutex gunMutex;
 static GunState gunSnaps[2];
+// Native slots published once at VBlank: input requests are not membership.
+static std::atomic<u8> confirmedPlayers { 0 };
+static std::atomic<bool> startInputReady { false };
 static std::atomic<u8> vmPlayers { 0 };
 static std::atomic<bool> vmPlayersKnown { false };
 
 static void applyGameProfile(Event, void *)
 {
+	confirmedPlayers = 0;
     hotd2RedBloodAtStart = config::VrRedBlood;
 	std::fill(std::begin(fovLiterals), std::end(fovLiterals), 0u);
 	std::fill(std::begin(markerTextures), std::end(markerTextures), 0u);
@@ -1033,6 +1037,16 @@ static u32 gunBlock(const GameProfile *prof, int player)
 	return 0x8C000000u | ((prof->gunRam.base + player * prof->gunRam.stride) & 0x01FFFFFFu);
 }
 
+bool gameStartReady()
+{
+	return emu.running() && startInputReady.load();
+}
+
+bool playerInGame(int player)
+{
+	return player >= 0 && player < 2 && emu.running() && ((confirmedPlayers.load() >> player) & 1) != 0;
+}
+
 bool gunState(int player, GunState& out)
 {
 	out = GunState {};
@@ -1066,6 +1080,18 @@ static bool vmCount(u32 addr, u32 maximum, u32& value)
 static void snapGuns(Event, void *)
 {
 	const GameProfile *prof = activeProfile;
+	u8 nativeMembership = 0;
+	bool nativeReady = false;
+	// CM's two-bit membership byte is valid only after its guarded code is loaded.
+	if (prof != nullptr && prof->gunRam.playing != 0 && profileCodeThere(*prof))
+	{
+		const u8 players = ReadMem8_nommu(0x8C000000u | (prof->gunRam.playing & 0x01FFFFFFu));
+		if ((players & ~3) == 0)
+		{
+			nativeMembership = players;
+			nativeReady = true;
+		}
+	}
 	u8 enabled = 0;
     struct NativeGun {bool known=false,active=false;u8 ammo=0,magazine=0;u32 shots=0;} native[2];
     const bool isDeath = prof != nullptr && prof->gunRam.deathCrimson;
@@ -1089,8 +1115,10 @@ static void snapGuns(Event, void *)
         }
         const bool known = native[0].known && native[1].known;
         if (known) enabled = (native[0].active ? 1 : 0) | (native[1].active ? 2 : 0);
-        const u8 was = vmPlayers.exchange(enabled);
+        nativeMembership = enabled;
+		const u8 was = vmPlayers.exchange(enabled);
         vmPlayersKnown = known;
+        nativeReady = known;
         for (int player = 0; player < 2; ++player)
             if (((was ^ enabled) >> player) & 1)
                 NOTICE_LOG(RENDERER, "VR: P%d active %s", player + 1, ((enabled >> player) & 1) ? "on" : "off");
@@ -1105,8 +1133,10 @@ static void snapGuns(Event, void *)
 				&& vmCount(prof->gunRam.active, 1, active[0]) && vmCount(prof->gunRam.active + 4, 1, active[1]);
 		if (vmValid && session == 1)
 			enabled = (u8)(active[0] | (active[1] << 1));
+		nativeMembership = enabled;
 		const u8 was = vmPlayers.exchange(enabled);
 		vmPlayersKnown = vmValid;
+		nativeReady = vmValid;
 		for (int player = 0; player < 2; player++)
 			if (((was ^ enabled) >> player) & 1)
 				NOTICE_LOG(RENDERER, "VR: P%d active %s", player + 1, ((enabled >> player) & 1) ? "on" : "off");
@@ -1165,6 +1195,8 @@ static void snapGuns(Event, void *)
 			NOTICE_LOG(RENDERER, "VR: P%d magazine 0 -> %d", player + 1, now.magazine);
 		gunSnaps[player] = now;
 	}
+	startInputReady = nativeReady;
+	confirmedPlayers = nativeMembership;
 }
 
 static struct GunSnapRegistration

@@ -5,7 +5,7 @@
 # The House of the Dead 2 — Arcade VR
 ### Original SEGA NAOMI Light-Gun Action · Standalone Meta Quest & PC VR
 
-[![Release v1.0.3](https://img.shields.io/badge/Release-v1.0.3_Experimental-bf3d53?style=for-the-badge)](https://github.com/vr4all-standalone/hotd2-arcade-vr/releases/latest)
+[![Release v1.0.4](https://img.shields.io/badge/Release-v1.0.4_Experimental-bf3d53?style=for-the-badge)](https://github.com/vr4all-standalone/hotd2-arcade-vr/releases/latest)
 [![Quest and PC VR](https://img.shields.io/badge/Headset-Quest_%C2%B7_PC_VR_OpenXR-blue?style=for-the-badge)](#quest-setup)
 [![Original arcade game required](https://img.shields.io/badge/Your_Game-hotd2_USA_Arcade-orange?style=for-the-badge)](#your-game-files)
 
@@ -114,3 +114,15 @@ The program is distributed under GPL-3.0 as described by the packaged `LICENSE.t
 ### Player assignment regression
 
 Run `powershell -NoProfile -File hotd2-vr/player-assignment-test.ps1` on a Windows development machine with Visual Studio C++ tools. It compiles the production hand policy, Start ownership, join/leave and menu code and checks both layouts against Confidential Mission behavior.
+
+## Quest Start and Service buttons
+
+Play can launch immersive VR from Quest Home in passthrough or a virtual home.
+After loading, tap and release **A** to start P1. **X** requests P2 where the game
+supports local two-player play, after P1 has started; the second gun appears only
+when the game accepts P2. In two-player mode, short Start presses follow the saved
+hand assignment. Survivor retains its native single-player controls.
+
+Hold the right controller's **A for 3 seconds** to open the arcade Service menu.
+A purple progress notice shows the hold. Releasing early acts as a normal Start;
+releasing after Service opens does not send Start. Service holds are offline only.
