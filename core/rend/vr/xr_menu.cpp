@@ -125,7 +125,7 @@ std::string value(int row)
 	case Reload:
 		return ReloadNames[std::clamp((int)config::VrReload, 0, 1)];
 	case Hands:
-		return HandsNames[p1Hand()];
+		return HandsNames[twoPlayerP1Hand()];
 	case Laser:
 		return config::VrLaser ? "On" : "Off";
 	case Haptics:

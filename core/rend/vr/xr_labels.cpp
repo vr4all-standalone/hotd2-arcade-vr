@@ -35,8 +35,8 @@ struct Label
 // Touch, the same jobs under each PC controller's own button names. The built-in shape is a Quest
 // controller's, so a PC controller's button points at the place doing the same job: Start at A (X
 // on the left), reload at B (Y), menu at the menu button. The two-player assignment names each
-// player's Start/reload and the P2 Start joins. Solo play always takes the gun with either trigger;
-// the trigger labels say so. With vr.SwapP1P2 on (default), P1 is left and P2 right (KindsP1Left).
+// player's Start/reload in dual play. Solo A starts P1 and X joins P2; either trigger takes the gun;
+// the trigger labels say so. With both players in and vr.SwapP1P2 on, P1 is left and P2 right (KindsP1Left).
 // Roboto Bold has no triple bar (U+2261), so Touch's menu button says "Menu".
 struct Words
 {
@@ -64,7 +64,7 @@ const Words Kinds[] {
 		{ { controllers::B, "Pad click - P1 Reload" }, { controllers::A, "Menu - P1 Start" }, { controllers::Trigger, "Trigger - P1 Shoot (solo: either)" },
 			{ controllers::Stick, "Stick - Laser" } } } },
 };
-// vr.SwapP1P2 on (default): each hand's buttons its own player's, P1 on the left and P2 on the right (the same
+// Both players in, vr.SwapP1P2 on (default): each hand's buttons its own player's, P1 on the left and P2 on the right (the same
 // buttons and order as Kinds)
 const Words KindsP1Left[] {
 	{ "/interaction_profiles/oculus/touch_controller", {

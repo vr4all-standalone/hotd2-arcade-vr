@@ -64,10 +64,12 @@ void quitToStart();
 // nothing instead, until play resumes. Haptics go to the gun's hand, so this is where a gun is drawn.
 // Render thread.
 Holds holds(int hand);
-// Two-player assignment (vr.SwapP1P2, the menu's Swap P1/P2): 0 left (enabled by default),
-// 1 right (disabled). Its Start/reload belong to P1 and the other's Start joins P2. When joining
-// is unavailable either Start starts P1. The single gun always follows either trigger, independently.
+// Solo Start roles: P1 right/A, P2 left/X (join). With both players in, the saved
+// two-player layout assigns Start/reload to each player's hand. The solo gun follows either trigger.
 int p1Hand();
+// Saved two-player layout (vr.SwapP1P2): P1 left by default, P1 right when disabled.
+// Also used by the menu while solo, without changing the solo Start roles or gun hand.
+int twoPlayerP1Hand();
 // The menu's How to play (xr_menu.h) on or off: while on, both hands hold their controllers with the
 // labels, as at the start (the guns leave the hands). The menu closing, however it closes, turns it
 // off and the hands get back what they held. Logs "XR: how to play on" / "... off (<why>)". Render thread.
@@ -90,7 +92,8 @@ inline void applyPause() {}
 inline void recenter() {}
 inline void quitToStart() {}
 inline Holds holds(int) { return Holds::Gun; }
-inline int p1Hand() { return 0; }
+inline int p1Hand() { return 1; }
+inline int twoPlayerP1Hand() { return 0; }
 inline void setHowToPlay(bool, const char *) {}
 inline bool howToPlayOn() { return false; }
 inline void sampleKnock(int) {}

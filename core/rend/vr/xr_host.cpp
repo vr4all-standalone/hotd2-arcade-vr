@@ -141,8 +141,8 @@ glm::vec3 originPos;
 glm::quat originRot { 1, 0, 0, 0 };
 
 // The light guns. Player 1's is in the hand whose trigger was pulled last; once player 2
-// joins (vr.DualWield: the assigned P2 Start), each player uses the two-player assignment
-// (p1Hand(): left by default). The single gun follows either trigger independently.
+// joins (vr.DualWield: solo X/left Start), each player uses the saved two-player assignment
+// (twoPlayerP1Hand(): left by default). The single gun follows either trigger independently.
 struct Gun
 {
 	int player;
@@ -193,6 +193,8 @@ bool dualWield;
 bool triggerReleaseWait[2];
 XrTime dualSince;
 bool p2StartWas, recenterWas, laserWas, menuWas;
+// A held physical Start keeps its player through joining, leaving and layout changes.
+int startOwner[2] { -1, -1 };
 // The VR menu (the settings menu, xr_menu.h). Open, the emulator is held stopped: frame() draws
 // the last game frame again for each new head pose, with the guns, the menu and its pointers, and
 // nothing goes to the game. The menu asks for it to open or close (pauseRequest: 1 open, 0 close,
@@ -2053,6 +2055,18 @@ void swapGunHands()
 		suppressGunInput(g);
 }
 
+// Track physical Start presses even while settings/preparation consume game input.
+// A release inside the menu ends ownership; a genuinely held press keeps its player.
+void playerStartButtons(bool leftStart, bool rightStart, bool& p1Start, bool& p2Start)
+{
+	const int hand1 = p1Hand();
+	const bool starts[2] { leftStart, rightStart };
+	for (int hand : { Left, Right })
+		startOwner[hand] = !starts[hand] ? -1 : startOwner[hand] >= 0 ? startOwner[hand] : hand == hand1 ? 0 : 1;
+	p1Start = (starts[Left] && startOwner[Left] == 0) || (starts[Right] && startOwner[Right] == 0);
+	p2Start = (starts[Left] && startOwner[Left] == 1) || (starts[Right] && startOwner[Right] == 1);
+}
+
 void updateLightgun(XrTime time)
 {
 	for (Gun& g : guns)
@@ -2139,6 +2153,9 @@ void updateLightgun(XrTime time)
 		leftHoldSince = leftTapUntil = 0;
 		leftHoldMenu = false;
 	}
+	const bool rightStart = boolAction(startAction, Right) && !startSwallow;
+	bool p1Start, p2Start;
+	playerStartButtons(leftStart, rightStart, p1Start, p2Start);
 	// B (or Y; Vive wands, Windows Mixed Reality: a pad click): the game's reload, or not now for
 	// the gun run, or the VR menu closed
 	const bool skip = boolAction(skipAction);
@@ -2221,23 +2238,17 @@ void updateLightgun(XrTime time)
 	float pulls[2];
 	for (int hand : { Left, Right })
 		pulls[hand] = tracked[hand] ? floatAction(triggerAction, hand) : 0.f;
-	// The two-player assignment also names each hand's Start/reload buttons. With no join
-	// path (one tracked controller, disabled, online, unsupported game), either Start starts P1.
-	// The left Start's menu hold and the right A swallowed after the menu stay physical.
-	const int hand1 = p1Hand(), hand2 = 1 - hand1;
-	const bool rightStart = boolAction(startAction, Right) && !startSwallow;
+	// Solo A/right starts P1; X/left joins P2. In dual play fresh Starts follow
+	// the selected layout. Hold ownership until release, as in Confidential Mission.
+	int hand1 = p1Hand(), hand2 = 1 - hand1;
+	// Joining needs both tracked controllers, a supported game and local play.
 	const bool canJoin = config::VrDualWield && !config::GGPOEnable && player2PromptKnown() && tracked[Left] && tracked[Right];
-	const bool assignedP1Start = hand1 == Right ? rightStart : leftStart;
-	const bool p1Start = !dualWield && !canJoin ? leftStart || rightStart : assignedP1Start;
-	const bool p2Start = hand1 == Right ? leftStart : rightStart;
-	// Joining takes both controllers (with one, either Start belongs to P1) and a game
-	// that shows when player 2 is out again (its profile knows the prompt). Not online
-	// (GGPO): player 2 is the other player there and only this side's player 1 is sent, so
-	// there either Start belongs to P1 until dual play is available.
 	if (canJoin && p2Start && !p2StartWas && !dualWield)
 	{
 		dualWield = true;
 		dualSince = time;
+		hand1 = p1Hand();
+		hand2 = 1 - hand1;
 		if (guns[0].hand != hand1)
 			swapGunHands();
 		const bool p2Down = guns[1].pointedDown;
@@ -2262,6 +2273,9 @@ void updateLightgun(XrTime time)
 		NOTICE_LOG(INPUT, "XR: player 2 is out: one gun again");
 		noteHolds("player 2 out");
 	}
+	// Resolve the current roles after joining or leaving in this frame.
+	hand1 = p1Hand();
+	hand2 = 1 - hand1;
 	// Hands changed in the menu with both players in (the menu has closed by now): the guns swap hands,
 	// each player keeping theirs and their game; a trigger held through it waits to be let go.
 	if (dualWield && guns[0].hand != hand1)
@@ -2281,7 +2295,7 @@ void updateLightgun(XrTime time)
 				pulls[hand] = 0.f;
 		}
 
-	// Player 2 joins as at the cabinet: with the assigned P2 Start (vr.DualWield; right by default),
+	// Player 2 joins with solo X/left Start; the saved two-player layout assigns the guns,
 	// and that hand gets player 2's gun (above). Out again once the game
 	// asks for player 2 in its corner again (lost, or never got in), after a few seconds to let the join land.
 	Gun& gun = guns[0];
@@ -2824,9 +2838,14 @@ Holds holds(int hand)
 	return p1Armed && inCutscene ? Holds::Nothing : Holds::Gun;
 }
 
-int p1Hand()
+int twoPlayerP1Hand()
 {
 	return config::VrSwapP1P2 ? Left : Right;
+}
+
+int p1Hand()
+{
+	return dualWield ? twoPlayerP1Hand() : Right;
 }
 
 int hapticsLevel()
@@ -2892,6 +2911,7 @@ void term()
 	guns[1] = Gun { 1, Left };
 	triggerReleaseWait[Left] = triggerReleaseWait[Right] = true;
 	dualWield = p2StartWas = recenterWas = laserWas = menuWas = p1StartWas = false;
+	startOwner[Left] = startOwner[Right] = -1;
 	skipWas = skipSwallow = false;
 	// (what the hands hold stays, p1Armed and menuHowToPlay: player 2's gun went without a word)
 	for (int hand : { Left, Right })

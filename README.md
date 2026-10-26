@@ -5,7 +5,7 @@
 # The House of the Dead 2 — Arcade VR
 ### Original SEGA NAOMI Light-Gun Action · Standalone Meta Quest & PC VR
 
-[![Release v1.0.0](https://img.shields.io/badge/Release-v1.0.0_Experimental-bf3d53?style=for-the-badge)](https://github.com/vr4all-standalone/hotd2-arcade-vr/releases/latest)
+[![Release v1.0.3](https://img.shields.io/badge/Release-v1.0.3_Experimental-bf3d53?style=for-the-badge)](https://github.com/vr4all-standalone/hotd2-arcade-vr/releases/latest)
 [![Quest and PC VR](https://img.shields.io/badge/Headset-Quest_%C2%B7_PC_VR_OpenXR-blue?style=for-the-badge)](#quest-setup)
 [![Original arcade game required](https://img.shields.io/badge/Your_Game-hotd2_USA_Arcade-orange?style=for-the-badge)](#your-game-files)
 
@@ -76,7 +76,7 @@ Extract `hotd2-arcade-vr-pcvr.zip` into its own folder. Place your files in `rom
 | Action | Quest Touch |
 | :--- | :--- |
 | Shoot | Trigger. In solo play a fresh trigger on the other hand transfers the gun. |
-| Start / join | Default two-player assignment: left X for P1, right A for P2. The **Two players** setting changes the assignment. |
+| Start / join | Solo: right A starts P1; left X joins P2. Joining applies **Two players**: P1 left / P2 right by default, or the reverse. With two players in, each hand's Start belongs to its assigned player. |
 | Reload | B or Y; or shoot off-screen. **Reload → Point off-screen** removes the trigger requirement. |
 | Settings / pause | Left Menu |
 | Recenter | Left thumbstick click |
@@ -84,6 +84,8 @@ Extract `hotd2-arcade-vr-pcvr.zip` into its own folder. Place your files in `rom
 | World size / gun size | Grip + thumbstick up/down or left/right |
 
 **Blood color:** open Settings with the left Menu button and choose **Blood color: Red** or **Green**. The choice is saved immediately and takes effect the next time you start the game; a pending change says **(next start)**. This uses the arcade game's own blood-effect resources. Loading an old save state can restore its old effects; start without a save state to apply the new color.
+
+A held Start stays with its original player until release, including through joining, leaving and changing **Two players**. The setting changes the two-player layout only; solo Start roles and either-trigger gun transfer stay the same. When joining is unavailable, X does not start P1.
 
 The standalone free-play option supplies cabinet credits automatically. Settings pause emulation. Holding a trigger through a hand swap does not fire a new round when the menu closes.
 
@@ -108,3 +110,7 @@ See [the validation notes](hotd2-vr/notes/hotd2-arcade-validation.md) for tested
 Built on [Flycast](https://github.com/flyinghead/flycast), [mikermak's HOTD2 VR](https://github.com/mikermak/hotd2-vr), and the [Confidential Mission](https://github.com/vr4all-standalone/confidential-mission-vr), [Lupin](https://github.com/vr4all-standalone/lupin-the-third-vr) and [Death Crimson OX](https://github.com/vr4all-standalone/death-crimson-ox-vr) adaptations. Their authors' notices and Git history are retained.
 
 The program is distributed under GPL-3.0 as described by the packaged `LICENSE.txt`, including cgltf's MIT notice and the compatible CC BY 4.0 Namco gun attribution. Optional bundled models have their own licences in `CREDITS.txt`. The native game pistol is generated from the player's game and is never included in the app, source or release archive.
+
+### Player assignment regression
+
+Run `powershell -NoProfile -File hotd2-vr/player-assignment-test.ps1` on a Windows development machine with Visual Studio C++ tools. It compiles the production hand policy, Start ownership, join/leave and menu code and checks both layouts against Confidential Mission behavior.

@@ -43,7 +43,7 @@ function Archive([string]$name, [hashtable]$entries) {
 try {
     Check 'HOTD2 Arcade application ID' ($appId -eq 'com.vrlightgunhub.hotd2arcade')
     Check 'HOTD2 Arcade label' ($appLabel -eq 'HOTD2 Arcade VR')
-    Check 'HOTD2 Arcade release base version' ($appVersion -eq '1.0.2')
+    Check 'HOTD2 Arcade release base version' ($appVersion -eq '1.0.3')
     Check 'HOTD2 Arcade setup launcher' ($appLauncher -eq 'com.flycast.emulator.Hotd2ArcadeStartActivity')
     Check 'HOTD2 Arcade PC launcher name' ($playCmd -eq 'Play HOTD2 Arcade.cmd')
     $banned = @('roms/LUPINSHOO.ZIP','roms/deathcoxj/mpr-23514.ic1','gds-0018.cue','gds-0018.gdi',
@@ -83,16 +83,16 @@ try {
         '  E: application', '    E: activity', '      A: android:name(0x01010003)="com.flycast.emulator.Hotd2ArcadeStartActivity"',
         '      E: intent-filter', '        E: category', '          A: android:name(0x01010003)="android.intent.category.LAUNCHER"')
     Check 'manifest launcher parser uses activity owner' (@(Get-LauncherOwners $tree) -join ',' -eq 'com.flycast.emulator.Hotd2ArcadeStartActivity')
-    $badging = @("package: name='com.vrlightgunhub.hotd2arcade' versionCode='3' versionName='1.0.2-gabc123'", "application-label:'HOTD2 Arcade VR'")
+    $badging = @("package: name='com.vrlightgunhub.hotd2arcade' versionCode='4' versionName='1.0.3-gabc123'", "application-label:'HOTD2 Arcade VR'")
     $hasIdentityCheck = [bool](Get-Command Find-AppIdentityFault -ErrorAction SilentlyContinue)
     Check 'APK metadata validator is independently testable' $hasIdentityCheck
     if ($hasIdentityCheck) {
         Check 'valid HOTD2 Arcade APK metadata accepted' (@(Find-AppIdentityFault $badging $tree 'abc123' $false).Count -eq 0)
         foreach ($case in @(
             @('package', 'com.vrlightgunhub.hotd2arcade', 'com.vrlightgunhub.confmiss'),
-            @('version code', "versionCode='3'", "versionCode='9'"),
-            @('base version', '1.0.2-gabc123', '1.2.0-gabc123'),
-            @('commit version', '1.0.2-gabc123', '1.0.2-gdef456'),
+            @('version code', "versionCode='4'", "versionCode='9'"),
+            @('base version', '1.0.3-gabc123', '1.2.0-gabc123'),
+            @('commit version', '1.0.3-gabc123', '1.0.3-gdef456'),
             @('label', 'HOTD2 Arcade VR', 'Confidential Mission VR'))) {
             $changed = @($badging | ForEach-Object { $_.Replace($case[1],$case[2]) })
             Check "wrong APK $($case[0]) rejected" (@(Find-AppIdentityFault $changed $tree 'abc123' $false).Count -gt 0)
