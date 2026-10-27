@@ -30,7 +30,7 @@ constexpr float Distance = 1.2f, BelowEyes = 0.1f;
 constexpr int Left = 0, Right = 1;
 
 const char *const Labels[Rows] { "Resume", "Recenter", "Gun", "Gun angle", "Reload", "Two players", "Laser", "Haptics",
-		"World size", "Panel distance", "Wider view", "Blood color", "How to play", "Quit" };
+		"World size", "Panel distance", "Wider view", "Blood color", "How to play", "Open Service Menu", "Quit" };
 const char *const HapticsNames[4] { "Off", "Light", "Medium", "Strong" };
 // vr.Haptics' words, saved by the Haptics row (hapticsLevel() reads them, and 1.2's numbers)
 const char *const HapticsWords[4] { "off", "light", "medium", "strong" };
@@ -142,6 +142,8 @@ std::string value(int row)
 		return std::string(config::VrRedBlood ? "Red" : "Green") + (bloodStateRestored || config::VrRedBlood != redBloodAtStart ? " (next start)" : "");
 	case HowToPlay:
 		return howToPlayOn() ? "On" : "Off";
+	case ServiceMenu:
+		return serviceMenuAvailable() ? "" : "Offline / after loading";
 	default:
 		return "";
 	}
@@ -155,11 +157,13 @@ RowsPanel panel()
 	{
 		PanelRow r;
 		r.label = row == Quit && quitArmed ? "Quit? Choose again" : Labels[row];
+        if (row == ServiceMenu && serviceMenuExitAvailable()) r.label="Exit Service Menu";
 		r.value = value(row);
 		if (row == GunAngle)
 			r.value += "\xB0";	// (the degree sign: panel text is drawn byte by byte as Latin-1)
 		r.selected = row == selected;
 		r.stepper = stepper(row);
+		if (row == ServiceMenu) r.dim = !serviceMenuAvailable();
 		if (row == Gun)
 		{
 			const std::vector<GunChoice> choices = gunChoices();
@@ -304,6 +308,13 @@ void choose(int row, int hand)
 		NOTICE_LOG(INPUT, "XR: menu Recenter");
 		recenter();
 		break;
+	case ServiceMenu:
+        if (openServiceMenu())
+        {
+            NOTICE_LOG(INPUT, "XR: menu Open Service Menu");
+            close();
+        }
+        break;
 	case Quit:
 		if (quitArmed && seconds() - quitArmedAt <= QuitConfirmSeconds)
 		{

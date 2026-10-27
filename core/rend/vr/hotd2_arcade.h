@@ -107,4 +107,28 @@ template<class Read16,class Read32> Scene readScene(Read16 read16,Read32 read32)
     const unsigned shooting=read32(ShootingMode);
     return shooting<=1?Scene{true,shooting==0}:Scene{};
 }
+// The USA cartridge owns both Test menus. Its final System Test EXIT sets
+// dispatch state 3 while restarting; submenu entry/exit uses states 0, 1 and 2.
+// This is guarded game code, independent of the early HOTD2-specific BIOS.
+inline constexpr Guard ServiceDispatchGuards[]={
+    {0x020078,0xD23D}, {0x02007A,0x6022},
+    {0x020170,0x07B8}, {0x020172,0x0C3D}
+};
+class ServiceExitObserver {
+    bool restartSeen=false;
+public:
+    void reset() {restartSeen=false;}
+    template<class Read16,class Read32> bool poll(Read16 read16,Read32 read32) {
+        if(!codeValid(read16))return false;
+        for(const auto& guard:ServiceDispatchGuards)
+            if(read16(guard.offset)!=guard.word)return false;
+        const unsigned dispatch=read32(0x3D07B8);
+        if(dispatch>3)return false;
+        const bool restarting=dispatch==3;
+        const bool report=restarting&&!restartSeen;
+        restartSeen=restarting;
+        return report;
+    }
+};
+
 }

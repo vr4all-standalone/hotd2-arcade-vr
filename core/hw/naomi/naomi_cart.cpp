@@ -22,6 +22,9 @@
 
 #include <memory>
 #include "naomi_cart.h"
+#include "hw/sh4/sh4_mem.h"
+#include "rend/vr/hotd2_arcade.h"
+#include "rend/vr/xr_host.h"
 #include "standalone_game.h"
 #include "naomi_regs.h"
 #include "naomi.h"
@@ -51,6 +54,32 @@
 #include "oslib/i18n.h"
 
 using namespace i18n;
+
+namespace {
+vr::hotd2::ServiceExitObserver hotd2ServiceExit;
+
+void resetHotd2ServiceExit(Event, void *) {
+    hotd2ServiceExit.reset();
+}
+
+void observeHotd2ServiceExit(Event, void *) {
+    if (!settings.platform.isNaomi() || settings.content.gameId != "hotd2")
+        return;
+    if (hotd2ServiceExit.poll(
+            [](unsigned offset) { return ReadMem16_nommu(0x0c000000u + offset); },
+            [](unsigned offset) { return ReadMem32_nommu(0x0c000000u + offset); })) {
+        NOTICE_LOG(NAOMI, "HOTD2: native System Test EXIT restarted the game");
+        vr::xr::notifyServiceGameBoot();
+    }
+}
+
+struct Hotd2ServiceExitRegistration {
+    Hotd2ServiceExitRegistration() {
+        EventManager::listen(Event::Start, resetHotd2ServiceExit);
+        EventManager::listen(Event::VBlank, observeHotd2ServiceExit);
+    }
+} hotd2ServiceExitRegistration;
+}
 
 Cartridge *CurrentCartridge;
 bool bios_loaded = false;

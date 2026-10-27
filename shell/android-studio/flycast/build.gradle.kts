@@ -13,7 +13,7 @@ fun gitVersionName(): String {
 
 // hotd2-vr: HOTD2 Arcade VR's own version. The vr build's versionName is "<hubVersion>-g<commit>"
 // (set in androidComponents below); the standalone update uses versionCode 2.
-val hubVersion = "1.0.4"
+val hubVersion = "1.0.5"
 
 fun gitShortHash(): String {
     return providers.exec {
@@ -240,7 +240,7 @@ androidComponents {
         variant.applicationId.set("com.vrlightgunhub.hotd2arcade")
         variant.outputs.forEach {
             it.versionName.set("$hubVersion-g${gitShortHash()}")
-            it.versionCode.set(5)
+            it.versionCode.set(6)
         }
         val licence = tasks.register<LicenceText>("${variant.name}LicenceText") {
             gpl3.set(file("../../../core/deps/picotcp/LICENSE.GPLv3"))
