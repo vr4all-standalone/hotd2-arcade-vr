@@ -49,7 +49,7 @@ android {
         applicationId = "com.flycast.emulator"
         minSdk = 29     // hotd2-vr: Quest only (the OpenXR loader needs 24+)
         targetSdk = 36
-        versionCode = 10
+        versionCode = 9
         versionName = gitVersionName()
         vectorDrawables.useSupportLibrary = true
 
@@ -240,7 +240,7 @@ androidComponents {
         variant.applicationId.set("com.vrlightgunhub.hotd2arcade")
         variant.outputs.forEach {
             it.versionName.set("$hubVersion-g${gitShortHash()}")
-            it.versionCode.set(6)
+            it.versionCode.set(7)
         }
         val licence = tasks.register<LicenceText>("${variant.name}LicenceText") {
             gpl3.set(file("../../../core/deps/picotcp/LICENSE.GPLv3"))
