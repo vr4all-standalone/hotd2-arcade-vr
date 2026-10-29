@@ -13,7 +13,7 @@ fun gitVersionName(): String {
 
 // hotd2-vr: HOTD2 Arcade VR's own version. The vr build's versionName is "<hubVersion>-g<commit>"
 // (set in androidComponents below); the standalone update uses versionCode 2.
-val hubVersion = "1.0.5"
+val hubVersion = "1.0.6"
 
 fun gitShortHash(): String {
     return providers.exec {
@@ -49,7 +49,7 @@ android {
         applicationId = "com.flycast.emulator"
         minSdk = 29     // hotd2-vr: Quest only (the OpenXR loader needs 24+)
         targetSdk = 36
-        versionCode = 9
+        versionCode = 10
         versionName = gitVersionName()
         vectorDrawables.useSupportLibrary = true
 

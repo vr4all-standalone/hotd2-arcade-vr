@@ -70,6 +70,9 @@ public class Hotd2ArcadeStartActivity extends Activity
     private Hotd2ArcadeStartStatus status;
     /** The player opened or closed "Where to put your files": it then stays as they left it. */
     private boolean moreTouched;
+    public static final String EXTRA_SUPPRESS_AUTO_START = "vr4all.suppressAutoStart";
+    private static final String STATE_AUTO_START_CONSUMED = "vr4all.autoStartConsumed";
+    private ReadyLaunchPolicy launchPolicy;
 
     /** Where the game's files are looked for: the app's own folders (adb), and Download once it may. */
     static List<File> roots(Context context)
@@ -94,6 +97,9 @@ public class Hotd2ArcadeStartActivity extends Activity
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+        launchPolicy = new ReadyLaunchPolicy(
+                getIntent().getBooleanExtra(EXTRA_SUPPRESS_AUTO_START, false),
+                savedInstanceState != null && savedInstanceState.getBoolean(STATE_AUTO_START_CONSUMED));
         getWindow().setBackgroundDrawable(new ColorDrawable(DECK));
 
         LinearLayout page = new LinearLayout(this);
@@ -140,7 +146,38 @@ public class Hotd2ArcadeStartActivity extends Activity
     protected void onResume()
     {
         super.onResume();
+        launchPolicy.onResume();
+        refreshAndAutoStart();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent)
+    {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        launchPolicy.onNewEntry(intent.getBooleanExtra(EXTRA_SUPPRESS_AUTO_START, false));
+        refreshAndAutoStart();
+    }
+
+    @Override
+    protected void onPause()
+    {
+        launchPolicy.onPause();
+        super.onPause();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle state)
+    {
+        state.putBoolean(STATE_AUTO_START_CONSUMED, launchPolicy.autoStartConsumed());
+        super.onSaveInstanceState(state);
+    }
+
+    private void refreshAndAutoStart()
+    {
         refresh();
+        if (launchPolicy.shouldAutoStart(status.ready))
+            play();
     }
 
     /** The top bar: the H2 tile, the app's name and its version. */
@@ -254,7 +291,7 @@ public class Hotd2ArcadeStartActivity extends Activity
                 + "No CHD is needed. Dreamcast media and other arcade revisions are unsupported. An ordinary naomi.zip BIOS cannot replace the special HOTD2 BIOS.", 17, MUTED, 500), spaced(8));
         body.addView(foundAt = text("", 17, CREAM, 500), spaced(10));
         Button again = button("Look again", RAISED, CREAM, 0xFF252B37, 0xFF464D55);
-        again.setOnClickListener(v -> refresh());
+        again.setOnClickListener(v -> refreshAndAutoStart());
         body.addView(again, spaced(16));
         body.setVisibility(View.GONE);
         return body;
@@ -379,7 +416,7 @@ public class Hotd2ArcadeStartActivity extends Activity
     {
         // the files as they are now (one may have gone since the screen was drawn)
         Hotd2ArcadeFiles.Result deathCrimson = refresh();
-        if (!status.ready)
+        if (!launchPolicy.beginLaunch(status.ready))
             return;
         // A game may still be running in the app's own process (the app opened again from the
         // library while one played): the emulator has one game per process, and its task would
