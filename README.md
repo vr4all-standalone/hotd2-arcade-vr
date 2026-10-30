@@ -5,8 +5,6 @@
 # The House of the Dead 2 — Arcade VR
 ### Original SEGA NAOMI Light-Gun Action · Standalone Meta Quest & PC VR
 
-[☕ Donate to VR4ALL](https://ko-fi.com/vr4all)
-
 [![Release v1.0.8](https://img.shields.io/badge/Release-v1.0.8_Experimental-bf3d53?style=for-the-badge)](https://github.com/vr4all-standalone/hotd2-arcade-vr/releases/latest)
 [![Quest and PC VR](https://img.shields.io/badge/Headset-Quest_%C2%B7_PC_VR_OpenXR-blue?style=for-the-badge)](#quest-setup)
 [![Original arcade game required](https://img.shields.io/badge/Your_Game-hotd2_USA_Arcade-orange?style=for-the-badge)](#your-game-files)
@@ -15,7 +13,9 @@
 
 [Checksums](https://github.com/vr4all-standalone/hotd2-arcade-vr/releases/latest/download/SHA256SUMS.txt) · [All releases](https://github.com/vr4all-standalone/hotd2-arcade-vr/releases)
 
-**[🌐 VR4ALL — Standalone VR Mod Installer](https://github.com/vr4all-standalone/vr4all-standalone-vr-mod-installer)**
+**[🌐 VR4ALL — Standalone VR Mod Installer](https://github.com/vr4all-standalone/vr4all-standalone)**
+
+[☕ Donate to VR4ALL](https://ko-fi.com/vr4all)
 
 </div>
 
