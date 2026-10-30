@@ -13,7 +13,7 @@ fun gitVersionName(): String {
 
 // hotd2-vr: HOTD2 Arcade VR's own version. The vr build's versionName is "<hubVersion>-g<commit>"
 // (set in androidComponents below); the standalone update uses versionCode 2.
-val hubVersion = "1.0.6"
+val hubVersion = "1.0.8"
 
 fun gitShortHash(): String {
     return providers.exec {

@@ -42,7 +42,7 @@ function Archive([string]$name, [hashtable]$entries) {
 }
 try {
     Check 'HOTD2 Arcade application ID' ($appId -eq 'com.vrlightgunhub.hotd2arcade')
-    Check 'HOTD2 Arcade label' ($appLabel -eq 'HOTD2 Arcade VR')
+    Check 'HOTD2 Arcade label' ($appLabel -eq 'HOTD2 Arcade - VR4ALL')
     Check 'HOTD2 Arcade release base version' ($appVersion -eq '1.0.5')
     Check 'HOTD2 Arcade setup launcher' ($appLauncher -eq 'com.flycast.emulator.Hotd2ArcadeStartActivity')
     Check 'HOTD2 Arcade PC launcher name' ($playCmd -eq 'Play HOTD2 Arcade.cmd')
@@ -60,7 +60,7 @@ try {
     Check 'credited model accepted' (@(Find-UncreditedModels $archive).Count -eq 0)
     $gpl = Get-Content -LiteralPath (Join-Path $repo 'core/deps/picotcp/LICENSE.GPLv3') -Raw
     $mit = Get-Content -LiteralPath (Join-Path $repo 'core/deps/cgltf/LICENSE') -Raw
-    $licence = "HOTD2 Arcade VR`n$gpl`n$mit"
+    $licence = "HOTD2 Arcade - VR4ALL`n$gpl`n$mit"
     $archive = Archive 'licensed.zip' @{'LICENSE.txt'=$licence}
     Check 'GPL-3 and cgltf notice accepted' (-not (Find-LicenceFault $archive))
     $archive = Archive 'missing-mit.apk' @{'assets/LICENSE.txt'=$gpl}
@@ -76,14 +76,14 @@ try {
     $policyCheck = Get-Command Test-StandalonePolicy -ErrorAction SilentlyContinue
     Check 'standalone release policy validator exists' ([bool]$policyCheck)
     if ($policyCheck) {
-        Check 'standalone build policy accepted' (Test-StandalonePolicy ([Text.Encoding]::ASCII.GetBytes('HOTD2 Arcade VR supports the measured USA hotd2.zip cartridge and HOTD2-specific hod2bios.zip BIOS. Dreamcast media and other arcade revisions are unsupported.')))
+        Check 'standalone build policy accepted' (Test-StandalonePolicy ([Text.Encoding]::ASCII.GetBytes('HOTD2 Arcade - VR4ALL supports the measured USA hotd2.zip cartridge and HOTD2-specific hod2bios.zip BIOS. Dreamcast media and other arcade revisions are unsupported.')))
         Check 'research build policy rejected' (-not (Test-StandalonePolicy ([Text.Encoding]::ASCII.GetBytes('generic Flycast research build'))))
     }
     $tree = @('E: manifest', '  E: uses-permission', '    A: android:name(0x01010003)="com.oculus.permission.RENDER_MODEL"',
         '  E: application', '    E: activity', '      A: android:name(0x01010003)="com.flycast.emulator.Hotd2ArcadeStartActivity"',
         '      E: intent-filter', '        E: category', '          A: android:name(0x01010003)="android.intent.category.LAUNCHER"')
     Check 'manifest launcher parser uses activity owner' (@(Get-LauncherOwners $tree) -join ',' -eq 'com.flycast.emulator.Hotd2ArcadeStartActivity')
-    $badging = @("package: name='com.vrlightgunhub.hotd2arcade' versionCode='6' versionName='1.0.5-gabc123'", "application-label:'HOTD2 Arcade VR'")
+    $badging = @("package: name='com.vrlightgunhub.hotd2arcade' versionCode='6' versionName='1.0.5-gabc123'", "application-label:'HOTD2 Arcade - VR4ALL'")
     $hasIdentityCheck = [bool](Get-Command Find-AppIdentityFault -ErrorAction SilentlyContinue)
     Check 'APK metadata validator is independently testable' $hasIdentityCheck
     if ($hasIdentityCheck) {
@@ -93,7 +93,7 @@ try {
             @('version code', "versionCode='6'", "versionCode='9'"),
             @('base version', '1.0.5-gabc123', '1.2.0-gabc123'),
             @('commit version', '1.0.5-gabc123', '1.0.5-gdef456'),
-            @('label', 'HOTD2 Arcade VR', 'Confidential Mission VR'))) {
+            @('label', 'HOTD2 Arcade - VR4ALL', 'Confidential Mission VR'))) {
             $changed = @($badging | ForEach-Object { $_.Replace($case[1],$case[2]) })
             Check "wrong APK $($case[0]) rejected" (@(Find-AppIdentityFault $changed $tree 'abc123' $false).Count -gt 0)
         }
@@ -108,7 +108,7 @@ try {
     Check 'portable PC archive validator is independently testable' $hasPcCheck
     if ($hasPcCheck) {
         $files = @('flycast.exe','emu.cfg','README.txt','LICENSE.txt','Play HOTD2 Arcade.cmd')
-        $readme = 'HOTD2 Arcade VR. Implementation in progress. roms\hotd2.zip roms\hod2bios.zip Play HOTD2 Arcade.cmd'
+        $readme = 'HOTD2 Arcade - VR4ALL. Implementation in progress. roms\hotd2.zip roms\hod2bios.zip Play HOTD2 Arcade.cmd'
         $entries = @{'flycast.exe'='synthetic'; 'emu.cfg'="[config]`npvr.rend = 0`nrend.NativeDepthInterpolation = yes`nvr.Xr = yes"; 'README.txt'=$readme; 'LICENSE.txt'=$licence; 'Play HOTD2 Arcade.cmd'='start "" /D "%~dp0" "%~dp0flycast.exe" "%~dp0roms\hotd2.zip"'}
         $archive = Archive 'portable-valid.zip' $entries
         Check 'exact portable HOTD2 Arcade archive accepted' (@(Find-PcArchiveFault $archive $files).Count -eq 0)
@@ -139,7 +139,7 @@ try {
         $archive = Archive 'portable-production-templates.zip' $production
         Check 'production README config and launcher satisfy portable checks' (@(Find-PcArchiveFault $archive $files).Count -eq 0)
         Check 'packaged README records hardware verification limit' ($generatedReadme.Contains('Physical headset testing remains pending.'))
-        $entries['README.txt'] = $readme.Replace('HOTD2 Arcade VR','Confidential Mission VR')
+        $entries['README.txt'] = $readme.Replace('HOTD2 Arcade - VR4ALL','Confidential Mission VR')
         $archive = Archive 'portable-wrong-readme.zip' $entries
         Check 'stale CM README rejected' (@(Find-PcArchiveFault $archive $files).Count -gt 0)
         $entries['README.txt'] = $readme
