@@ -29,7 +29,7 @@
   (core\deps\cgltf\LICENSE) in it; -CheckOnly checks that too.
 
   A release is built from a commit, the one its published source is: the working tree must be
-  clean (the gamesdk submodule's local change aside), and the APK's versionName (1.0.6-g<commit>),
+  clean (the gamesdk submodule's local change aside), and the APK's versionName (1.0.8-g<commit>),
   its libflycast.so and flycast.exe must all name HEAD (a -SkipBuild after a new commit fails
   that). -AllowDebugKey test builds skip both checks.
 
@@ -189,7 +189,7 @@ function Read-ZipEntry([string]$archive, [string]$name) {
 # The policy-disabled executable is for local research only. Its optimized binary omits
 # the rejection diagnostic; require the compiled guard in both platform artifacts.
 function Test-StandalonePolicy([byte[]]$bytes) {
-    $bytes -and [Text.Encoding]::ASCII.GetString($bytes).Contains('HOTD2 Arcade VR supports the measured USA hotd2.zip cartridge and HOTD2-specific hod2bios.zip BIOS. Dreamcast media and other arcade revisions are unsupported.')
+    $bytes -and [Text.Encoding]::ASCII.GetString($bytes).Contains('HOTD2 Arcade - VR4ALL supports the measured USA hotd2.zip cartridge and HOTD2-specific hod2bios.zip BIOS. Dreamcast media and other arcade revisions are unsupported.')
 }
 # A built binary names this commit: the version core\version.h gave it (v<tag>-<n>-g<commit>).
 function Test-NamesCommit([string]$what, [byte[]]$bytes, [string]$hash) {
