@@ -73,6 +73,49 @@ bool rowsPanelHit(const glm::mat4& model, const RowsPanel& panel, const glm::vec
 // across the panel, 0 at its left edge, 1 at its right one.
 int rowAt(const glm::mat4& model, const RowsPanel& panel, const glm::vec3& origin, const glm::vec3& dir, float *u);
 
+// The sectioned settings picture uses one fixed footprint for every page. Rectangles
+// use normalized UV coordinates: (0,0) is the upper left, (1,1) the lower right.
+struct SettingsRect { float x = 0, y = 0, w = 0, h = 0; };
+struct SettingsRow
+{
+	std::string label, value, note;
+	std::vector<std::string> choices;
+ // Empty: every choice is available. Otherwise, one flag per choice; unavailable pills stay visible.
+ std::vector<bool> choiceEnabled;
+ bool canChoose(int index) const {
+  return index >= 0 && index < (int)choices.size() && (choiceEnabled.empty() ||
+   (index < (int)choiceEnabled.size() && choiceEnabled[index]));
+ }
+	int choice = -1;
+	bool selected = false, dim = false, stepper = false, action = false;
+};
+struct SettingsPanel
+{
+	std::string game, title, subtitle, footer;
+	int activeTab = 0, selectedTab = -1;
+ bool back = false, backSelected = false, closeSelected = false, dialog = false, locked = false;
+	std::vector<SettingsRow> rows;
+};
+struct SettingsHit
+{
+	enum class Kind { None, Close, Back, Tab, Row };
+	Kind kind = Kind::None;
+	int index = -1, choice = -1, direction = 0;
+};
+RowsLayout settingsLayout();
+SettingsRect settingsRowRect(const SettingsPanel& panel, int row);
+SettingsRect settingsTabRect(int tab);
+SettingsRect settingsCloseRect();
+SettingsRect settingsBackRect();
+SettingsHit settingsAt(const SettingsPanel& panel, glm::vec2 uv);
+bool settingsPanelHit(const glm::mat4& model, const SettingsPanel& panel, const glm::vec3& origin,
+		const glm::vec3& dir, glm::vec3 *point = nullptr, glm::vec2 *uv = nullptr);
+SettingsHit settingsHit(const glm::mat4& model, const SettingsPanel& panel,
+		const glm::vec3& origin, const glm::vec3& dir);
+void drawSettingsPanel(const glm::mat4& viewProj, const glm::mat4& model, const SettingsPanel& panel);
+
+void drawPanelContact(const glm::mat4& viewProj, const glm::mat4& model);
+
 // One line of text as a small picture of its own (the controllers' labels, xr_labels.h): letters px
 // high in `colour`, on a dark plate with round corners and a margin; width and height: its size in
 // pixels. Painted and uploaded once for each text, px and colour (cached by them: the same arguments

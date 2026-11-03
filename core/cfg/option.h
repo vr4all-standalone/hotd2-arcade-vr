@@ -25,6 +25,9 @@
 #include <type_traits>
 #include "cfg.h"
 #include "rend/vr/gun_angle_settings.h"
+#include "rend/vr/reticle_settings.h"
+#include "rend/vr/hud_size_settings.h"
+#include "rend/vr/world_scale_settings.h"
 #include "hw/maple/maple_cfg.h"
 #ifdef LIBRETRO
 #include <libretro.h>
@@ -480,11 +483,24 @@ extern Option<std::string> VrWatchTex;
 #endif
 extern Option<bool> VrXrGun;
 extern Option<bool> VrWiden;
-extern Option<float> VrWorldScale;
+extern Option<int, false> VrWidenMode;
+using WorldScaleOption = vr::world_scale::Setting<Option<float, false>>;
+extern WorldScaleOption VrWorldScale;
 extern Option<float> VrXrResolution;
 extern Option<int> VrMsaa;
 extern Option<int> VrXrRefreshRate;
 extern Option<bool> VrLaser;
+extern Option<int, false> VrLaserWidth;
+using ReticleModeOption = vr::reticle::ModeSetting<Option<int, false>>;
+using ReticleMinSizeOption = vr::reticle::MinimumSetting<Option<float, false>>;
+using ReticleMaxSizeOption = vr::reticle::MaximumSetting<Option<float, false>>;
+using ReticleDistanceOption = vr::reticle::DistanceSetting<Option<float, false>>;
+using HudSizeOption = vr::hud::SizeSetting<Option<float, false>>;
+extern HudSizeOption VrHudSize;
+extern ReticleModeOption VrReticleMode;
+extern ReticleMinSizeOption VrReticleMinSize;
+extern ReticleMaxSizeOption VrReticleMaxSize;
+extern ReticleDistanceOption VrReticleShrinkDistance;
 extern Option<bool> VrShowGun;
 extern Option<bool> VrShowControllers;
 extern Option<float> VrGunScale;

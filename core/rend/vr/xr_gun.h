@@ -68,6 +68,9 @@ struct GunView
 	bool menuPointer = false; // purple UI pointer; gameplay keeps its player color
 	bool aimLine = false;		// draw the line from the muzzle to the aim point
 	bool aimDot = false;		// draw the dot at the aim point
+	bool servicePointer = false; // native service endpoint keeps its original behavior
+	glm::mat4 reticleHead { 1.f }; // shared cyclopean head orientation, both eyes
+	float reticlePanelDistance = 4.4f; // actual physical panel distance in metres
 	bool aimOutside = false;	// ...greyed: the game can't hit there (outside its own view)
 	glm::vec3 aimPoint { 0.f };	// room space
 	int player = 0;				// whose gun: player 1's aim is red, player 2's blue

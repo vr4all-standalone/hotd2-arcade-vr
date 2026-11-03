@@ -1,5 +1,5 @@
 <#
-  Packages HOTD2 Arcade VR builds for the Quest and PC (implementation remains in progress)
+  Packages The House of the Dead 2 - VR4ALL builds for the Quest and PC (implementation remains in progress)
   in dist\ (packaging checks do not establish gameplay or headset validation):
 
     hotd2-arcade-vr-quest.apk   the Quest app (Quest 3, 3S, 2, Pro)
@@ -11,7 +11,7 @@
   is made on the spot. Both are checked for that (the names in their file lists: discs, keys,
   rips, frame grabs, models made from a game), and the APK for its signer: signed with the public
   debug key (no release key, see make-release-key.ps1) it is refused, since anyone could sign an
-  "update" of the app with that key. The APK is also checked for being HOTD2 Arcade VR
+  "update" of the app with that key. The APK is also checked for being The House of the Dead 2 - VR4ALL
   (its package, version and label, and its start screen the only entry in the headset's library),
   and the zip for holding exactly its files, with a README.txt that names no other game.
 
@@ -51,8 +51,8 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 # The app: its application ID, label and version (shell\android-studio\flycast\build.gradle.kts and
 # src\vr\AndroidManifest.xml), its library entry, and the PC zip's start script (hotd2-vr\assets).
 $appId = 'com.vrlightgunhub.hotd2arcade'
-$appLabel = 'HOTD2 Arcade VR'
-$appVersion = '1.0.6'
+$appLabel = 'The House of the Dead 2 - VR4ALL'
+$appVersion = '1.0.12'
 $appLauncher = 'com.flycast.emulator.Hotd2ArcadeStartActivity'
 $playCmd = 'Play HOTD2 Arcade.cmd'
 
@@ -227,7 +227,7 @@ function Find-AppIdentityFault([string[]]$badgingLines, [string[]]$manifestTree,
     $badging = $badgingLines | Where-Object { $_ -match '^package:' } | Select-Object -First 1
     $wantVersion = [regex]::Escape("$appVersion-g") + $(if ($testBuild) { '[0-9a-f]+' } else { [regex]::Escape($shortHash) })
     if ($badging -notmatch "^package: name='$([regex]::Escape($appId))'") { "the package is not $appId" }
-    if ($badging -notmatch "versionCode='7'") { 'the versionCode is not 7' }
+    if ($badging -notmatch "versionCode='13'") { 'the versionCode is not 13' }
     if ($badging -notmatch "versionName='$wantVersion'") {
         "the versionName is not $appVersion-g$(if ($testBuild) { '<commit>' } else { $shortHash })"
     }
@@ -421,7 +421,7 @@ rend.NativeDepthInterpolation = yes
 vr.Xr = yes
 '@
 $readme = @'
-HOTD2 Arcade VR, experimental PC VR build
+The House of the Dead 2 - VR4ALL, experimental PC VR build
 
 The original Sega NAOMI arcade cartridge in stereo VR. Physical headset testing remains pending.
 

@@ -89,7 +89,7 @@ constexpr size_t CmMaxCaptures = 1200;	// 20 s of passes (about 15 kB each)
 
 enum State { Off, Watching, Preparing };
 std::atomic<int> state { Off };
-std::atomic<bool> newModel, skipRequested;
+std::atomic<bool> newModel, skipRequested, hotd2Required;
 std::atomic<float> progress;
 std::atomic<bool> staffRun;	// the run is for the hero's staff
 std::atomic<bool> cmRun;	// ...for Confidential Mission's guns
@@ -215,7 +215,8 @@ void onStart()
 	// a new game: whatever model the renderer has is another game's
 	newModel = true;
 	const Source *source = gameModelSource();
-	if (source == nullptr || !config::VrGameHands)
+	hotd2Required = source != nullptr && settings.content.gameId == "hotd2" && xr::enabled();
+	if (source == nullptr || (!config::VrGameHands && !hotd2Required))
 		return;
 	cmRun = source->kind == Source::CmGuns;
 	lupinRun = source->kind == Source::LupinGun;
@@ -242,6 +243,7 @@ void onStart()
 	}
 
 	const bool watchOnly = haveModel();
+	if (watchOnly) hotd2Required = false;
 	if (watchOnly)
 	{
 		NOTICE_LOG(RENDERER, "VR hands: %s, made before: %s", source->name(),
@@ -287,7 +289,7 @@ void onStart()
 	// The run: in the headset, or on the PC when asked (vr.HandsPrep, for testing; the OpenXR
 	// simulator counts as the PC). Never online: it presses Start for this side's player in the
 	// shared game (watching for the scene in play still makes the model when it comes by).
-	if ((!xr::enabled() || xr::sim::active()) && !config::VrHandsPrep)
+	if (!hotd2Required && (!xr::enabled() || xr::sim::active()) && !config::VrHandsPrep)
 		return;
 	if (config::GGPOEnable)
 	{
@@ -367,7 +369,7 @@ void onVBlank()
 			progress = .25f;
 		return;
 	}
-	if (skipRequested)
+	if (skipRequested && !hotd2Required)
 	{
 		// Confidential Mission (S23): skipped is skipped for the session, no gun made by watching
 		// play either (the reload tutorial comes right after Start), so the arcade gun stays and
@@ -663,6 +665,7 @@ bool saveGun(const GunTarget& gun, int i, const std::vector<u8>& model, u32 poly
 		NOTICE_LOG(RENDERER, "VR hands: the %s from this game, %zu bytes to %s (%u of its %u polygons)", gun.name,
 				model.size(), path.c_str(), polys, (u32)gun.wholePolys);
 	gunDone[i] = true;
+	if (settings.content.gameId == "hotd2") hotd2Required = false;
 	newModel = true;
 	return true;
 }
@@ -1056,6 +1059,8 @@ bool preparing() {
 void prepFramePresented() {
 	if (state == Preparing && deathRun) deathPreparation.presented();
 }
+
+bool hotd2PrepRequired() { return xr::enabled() && hotd2Required; }
 
 float prepProgress() {
 	return progress;

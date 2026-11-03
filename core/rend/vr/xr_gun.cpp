@@ -10,6 +10,9 @@
 	Copyright 2026 mikermak. This file is part of Flycast and is distributed under the GNU GPL v2 or later.
 */
 #include "xr_gun.h"
+#include "laser_settings.h"
+#include "reticle_settings.h"
+#include "custom_reticle.h"
 #include "arcade_gun_color.h"
 #include "xr_theme.h"
 #include "xr_hands.h"
@@ -430,6 +433,18 @@ void drawGunModel(const glm::mat4& viewProj, const glm::vec3& eyePos, const GunV
 	logGlErrors("gun");
 }
 
+void customReticle(std::vector<GlowVertex>& out,const GunView& gun)
+{
+ const glm::vec3 center=glm::vec3(gun.reticleHead[3]);
+ const float reference=(float)vr::reticle::sizeReference(glm::length(gun.aimPoint-center),gun.reticlePanelDistance,config::VrReticleMinSize,config::VrReticleShrinkDistance,config::VrReticleMaxSize);
+ if(!(reference>0.f))return;
+ // One head orientation and target for both eyes: only their projection differs.
+ const glm::vec3 right=glm::vec3(gun.reticleHead[0]),up=glm::vec3(gun.reticleHead[1]);
+ const glm::vec3 color=gun.player==1?glm::vec3(.125f,.4f,1.f):glm::vec3(1.f,.125f,.125f);
+ for(const auto& vertex:vr::reticle::custom_reticle_mesh())
+  out.push_back({gun.aimPoint+(right*vertex.x+up*vertex.y)*(.055f*reference),glm::vec4(color,1.f),{}});
+}
+
 void drawGunGlow(const glm::mat4& viewProj, const glm::vec3& eyePos, const GunView& gun, bool withSmoke)
 {
 	if (!initGlow())
@@ -476,7 +491,8 @@ void drawGunGlow(const glm::mat4& viewProj, const glm::vec3& eyePos, const GunVi
 		{
 			const glm::vec3 fwd = dir / len;
 			glm::vec3 side = glm::cross(fwd, eyePos - muzzle);
-			side = glm::length(side) < 1e-6f ? glm::vec3(0.0008f, 0, 0) : glm::normalize(side) * 0.0008f;
+			const float halfWidth = (gun.menuPointer || gun.servicePointer) ? vr::laser::PointerHalfWidth : vr::laser::halfWidth(config::VrLaserWidth);
+			side = glm::length(side) < 1e-6f ? glm::vec3(halfWidth, 0, 0) : glm::normalize(side) * halfWidth;
 			// fades out along the way: it guides without painting over the scene
 			const glm::vec3 colour = gun.menuPointer ? theme::Accent : gun.player == 1 ? glm::vec3(0.15f, 0.45f, 1.f) : glm::vec3(1.f, 0.08f, 0.05f);
 			const glm::vec4 start { colour, 0.55f }, end { colour, 0.f };
@@ -509,7 +525,9 @@ void drawGunGlow(const glm::mat4& viewProj, const glm::vec3& eyePos, const GunVi
 		billboard(stars, at, eyePos, (0.035f + 0.02f * flash) * g, glm::vec4(1.f, 0.7f, 0.25f, flash));
 		billboard(stars, at, eyePos, 0.016f * g, glm::vec4(1.f, 1.f, 0.9f, flash));
 	}
-	if (gun.aimDot)
+	std::vector<GlowVertex> reticle;
+	if(gun.aimDot && !gun.menuPointer && !gun.servicePointer && vr::reticle::mode(config::VrReticleMode)==1)customReticle(reticle,gun);
+	if (gun.aimDot && (gun.menuPointer || gun.servicePointer))
 	{
 		// about 0.6 degrees across wherever it lands
 		const float size = glm::length(gun.aimPoint - eyePos) * 0.0055f;
@@ -543,6 +561,9 @@ void drawGunGlow(const glm::mat4& viewProj, const glm::vec3& eyePos, const GunVi
 	drawGlowShape(Flame, flames);
 	drawGlowShape(Star, stars);
 	drawGlowShape(Dot, dots);
+	// Custom arms are opaque player color; keep additive blending for the effects above.
+	glcache.BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	drawGlowShape(Line, reticle);
 	glcache.DepthMask(GL_TRUE);
 	glcache.Disable(GL_BLEND);
 	logGlErrors("gun glow");

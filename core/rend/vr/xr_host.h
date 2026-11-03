@@ -53,6 +53,8 @@ void requestPause(bool on);
 bool serviceMenuAvailable();
 bool openServiceMenu();
 bool serviceMenuExitAvailable();
+// Explicit Service state, including a pending entry before its native screen appears.
+bool serviceMenuActive();
 // Emulator-thread notification for native main-game boot or modal operator-menu return.
 void notifyServiceGameBoot();
 // Emulator::render, render thread, first thing: stops or starts the emulator as requestPause asked.
@@ -97,6 +99,7 @@ inline void requestPause(bool) {}
 inline bool serviceMenuAvailable() { return false; }
 inline bool openServiceMenu() { return false; }
 inline bool serviceMenuExitAvailable() { return false; }
+inline bool serviceMenuActive() { return false; }
 inline void notifyServiceGameBoot() {}
 inline void applyPause() {}
 inline void recenter() {}

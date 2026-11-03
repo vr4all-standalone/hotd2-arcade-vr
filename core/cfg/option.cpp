@@ -113,12 +113,19 @@ Option<std::string> VrWatchRam("vr.WatchRam", "");	// PC test aid: "addr[:size],
 Option<std::string> VrWatchTex("vr.WatchTex", "");	// PC test aid: "tex,..." textures logged when they come into the passes and go
 #endif
 Option<bool> VrXrGun("vr.XrGun", true);		// the controllers drive the light gun (the one that fires holds it)
+Option<int, false> VrWidenMode("vr.WidenMode", -1);
 Option<bool> VrWiden("vr.Widen", true);		// let the game profile widen the view (vr.FovScale)
-Option<float> VrWorldScale("vr.WorldScale", 0.11f);	// metres per game unit (HOTD2's camera rides 15 units over the street: eye height)
+WorldScaleOption VrWorldScale;	// metres per game unit (HOTD2's camera rides 15 units over the street: eye height)
 Option<float> VrXrResolution("vr.XrResolution", 1.f);	// eye buffer size, times the recommended size
 Option<int> VrMsaa("vr.Msaa", 1);		// smooth edges: multisampling, e.g. 4 (the Quest only; 1: off)
 Option<int> VrXrRefreshRate("vr.XrRefreshRate", 72);	// Hz
-Option<bool> VrLaser("vr.Laser", true);		// aim line and dot from the gun
+Option<bool> VrLaser("vr.Laser", true);
+Option<int, false> VrLaserWidth("vr.LaserWidth", 1);
+HudSizeOption VrHudSize;
+ReticleModeOption VrReticleMode;
+ReticleMinSizeOption VrReticleMinSize;
+ReticleMaxSizeOption VrReticleMaxSize;
+ReticleDistanceOption VrReticleShrinkDistance;
 Option<bool> VrShowGun("vr.ShowGun", true);	// a gun in the shooting hand
 Option<bool> VrShowControllers("vr.ShowControllers", true);	// the controllers in the hands that hold no gun, while how to play shows (before play starts, the VR menu's How to play)
 Option<float> VrGunScale("vr.GunScale", 0.68f);	// its size, times the model's (24.7 cm long); 0.68: 17 cm, a compact pistol

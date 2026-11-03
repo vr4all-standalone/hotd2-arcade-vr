@@ -82,6 +82,7 @@ bool preparing();
 void prepFramePresented();
 // How far along that is, 0..1 (a guess from the time the run usually takes).
 float prepProgress();
+bool hotd2PrepRequired();
 // The player doesn't want to wait: the arcade gun this time.
 void skipPrep();
 

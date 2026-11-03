@@ -17,7 +17,7 @@
 namespace vr::xr::menu
 {
 
-enum Row { Resume, Recenter, Gun, GunAngle, Reload, Hands, Laser, Haptics, WorldSize, PanelDistance, WiderView, BloodColor, HowToPlay, ServiceMenu, Quit, Rows };
+enum Row { Resume, Recenter, Gun, GunAngle, Reload, Hands, Laser, Reticle, ReticleMinSize, ReticleMaxSize, ReticleShrinkDistance, Haptics, WorldSize, PanelDistance, HudSize, WiderView, BloodColor, HowToPlay, ServiceMenu, ResetDefaults, Quit, Rows };
 
 // What the controllers did in a headset frame. The buttons are edges (just pressed); the rays,
 // one per hand (0 left, 1 right), are in the game camera's room space, with their trigger's click.
@@ -49,6 +49,7 @@ void reset();
 void update(const Input& input);
 // Where a hand's ray meets the panel, as of the last update. False: it doesn't (or no menu).
 bool pointer(int hand, glm::vec3& at);
+int pointerHand();
 // The panel, into the bound eye framebuffer; viewProj: room space -> the eye's clip space.
 void draw(const glm::mat4& viewProj);
 

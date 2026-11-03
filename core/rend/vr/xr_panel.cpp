@@ -44,6 +44,13 @@ constexpr float WidthMetres = 1.3f, Distance = 1.6f;
 constexpr int RowsWidth = 1024, TitleBand = 100, RowHeight = 72, FooterBand = 76;
 constexpr float RowsWidthMetres = 0.9f;
 
+// A single raster layout serves painting, ray targeting and presentation focus.
+// Six slots cover the largest main/advanced page without moving the panel.
+constexpr int SettingsWidth = 1200, SettingsHeight = 880, SettingsMaxRows = 6;
+constexpr float SettingsWidthMetres = 1.1f;
+constexpr float SettingsRowTop = 312.f, SettingsRowPitch = 80.f, SettingsRowHeight = 70.f;
+constexpr float SettingsRight = 1140.f, SettingsChoiceGap = 7.f;
+
 std::unique_ptr<u8[]> fontData;
 stbtt_fontinfo font;
 bool fontTried, fontLoaded;
@@ -58,7 +65,7 @@ struct Picture
 	std::string shown;
 	int width = 0, height = 0;	// its storage's size (0: none yet)
 };
-Picture linesPicture, rowsPicture;
+Picture linesPicture, rowsPicture, settingsPicture;
 // one line's pictures (textTexture), by px, colour and text; and a white texel for lines and dots
 struct TextPicture
 {
@@ -66,7 +73,7 @@ struct TextPicture
 	int width = 0, height = 0;
 };
 std::map<std::string, TextPicture> textPictures;
-GLuint whiteTexture;
+GLuint whiteTexture, contactTexture;
 // the picture being painted
 int canvasWidth, canvasHeight;
 std::vector<u8> pixels;
@@ -290,6 +297,206 @@ void paintRows(const RowsPanel& panel)
 		text(panel.footer, 26.f, w * 0.5f, baseline(h - FooterBand * 0.5f - 1.f, 26.f), grey);
 }
 
+SettingsRect normalized(float x, float y, float w, float h)
+{
+	return {x / SettingsWidth, y / SettingsHeight, w / SettingsWidth, h / SettingsHeight};
+}
+
+bool contains(SettingsRect rect, glm::vec2 uv)
+{
+	return rect.w > 0.f && rect.h > 0.f && uv.x >= rect.x && uv.y >= rect.y &&
+		uv.x < rect.x + rect.w && uv.y < rect.y + rect.h;
+}
+
+std::vector<SettingsRect> choiceRects(const SettingsPanel& panel, int index)
+{
+	const SettingsRect row = settingsRowRect(panel, index);
+	if (row.w <= 0.f) return {};
+	const auto& choices = panel.rows[index].choices;
+	std::vector<float> widths;
+	float total = 0.f;
+	for (const auto& choice : choices)
+	{
+		int letters = 0;
+		letters = (int)choice.size();
+		const float width = std::max(78.f, letters * 15.f + 28.f);
+		widths.push_back(width);
+		total += width;
+	}
+	if (widths.empty()) return {};
+	const float gaps = SettingsChoiceGap * (widths.size() - 1);
+	const float scale = std::min(1.f, (670.f - gaps) / total);
+	float x = SettingsRight - total * scale - gaps;
+	std::vector<SettingsRect> rects;
+	for (float width : widths)
+	{
+		rects.push_back(normalized(x, row.y * SettingsHeight + (row.h * SettingsHeight - 48.f) * .5f,
+			width * scale, 48.f));
+		x += width * scale + SettingsChoiceGap;
+	}
+	return rects;
+}
+
+SettingsRect stepRect(const SettingsPanel& panel, int row, int direction)
+{
+	const auto rect = settingsRowRect(panel, row);
+	if (rect.w <= 0.f) return {};
+	return normalized(direction < 0 ? 878.f : 1082.f,
+		rect.y * SettingsHeight + (rect.h * SettingsHeight - 52.f) * .5f, 58.f, 52.f);
+}
+
+void rounded(float x, float y, float w, float h, float radius, const glm::vec3& colour)
+{
+	for (int py = std::max(0, (int)std::floor(y)); py < std::min(canvasHeight, (int)std::ceil(y + h)); ++py)
+		for (int px = std::max(0, (int)std::floor(x)); px < std::min(canvasWidth, (int)std::ceil(x + w)); ++px)
+		{
+			const float cx = std::clamp(px + .5f, x + radius, x + w - radius);
+			const float cy = std::clamp(py + .5f, y + radius, y + h - radius);
+			blend(px, py, colour, std::clamp(radius + .5f - std::hypot(px + .5f - cx, py + .5f - cy), 0.f, 1.f));
+		}
+}
+
+void card(SettingsRect r, const glm::vec3& back, const glm::vec3& edge, float radius = 13.f)
+{
+	const float x = r.x * SettingsWidth, y = r.y * SettingsHeight;
+	const float w = r.w * SettingsWidth, h = r.h * SettingsHeight;
+	rounded(x, y, w, h, radius, edge);
+	rounded(x + 1.5f, y + 1.5f, w - 3.f, h - 3.f, radius - 1.5f, back);
+}
+
+int baseline(float middle, float px) { return (int)std::lround(middle + px * .3f); }
+
+void fitText(const std::string& value, float px, float x, int y, float width,
+		const glm::vec3& colour, float align = 0.f)
+{
+	const float natural = textWidth(value, px);
+	if (natural > width && natural > 0.f) px *= width / natural;
+	text(value, px, x, y, colour, align);
+}
+
+void wrappedText(const std::string& value, float px, float x, int y, float width,
+		const glm::vec3& colour, int maxLines = 2)
+{
+	size_t at = 0;
+	for (int line = 0; at < value.size() && line < maxLines; ++line)
+	{
+		size_t end = at, accepted = at;
+		while (end < value.size())
+		{
+			const auto space = value.find(' ', end);
+			end = space == std::string::npos ? value.size() : space + 1;
+			if (textWidth(value.substr(at, end - at), px) > width && accepted > at) break;
+			accepted = end;
+			if (space == std::string::npos) break;
+		}
+		if (line == maxLines - 1) accepted = value.size();
+		fitText(value.substr(at, accepted - at), px, x, y + line * (int)(px * 1.35f), width, colour);
+		at = accepted;
+	}
+}
+
+void paintSettings(const SettingsPanel& panel)
+{
+	background(SettingsWidth, SettingsHeight);
+	const glm::vec3 surface(29/255.f,34/255.f,48/255.f), inset(17/255.f,21/255.f,31/255.f);
+	const glm::vec3 edge(83/255.f,75/255.f,103/255.f);
+	// Outer corner alpha is applied last, so all drawing uses the same CPU blend helper.
+	rounded(0,0,SettingsWidth,SettingsHeight,26.f,edge);
+	rounded(2,2,SettingsWidth-4,SettingsHeight-4,24.f,theme::Background);
+	const auto headerColour = (panel.dialog||panel.locked) ? theme::Dim : theme::Text;
+	text("VR4ALL", 27.f, 38.f, 43, (panel.dialog||panel.locked) ? theme::Dim : theme::Accent, 0.f);
+	fitText(panel.game + " / Settings", 42.f, 38.f, 91, 940.f, headerColour);
+	card(settingsCloseRect(), surface, panel.closeSelected && !(panel.dialog||panel.locked) ? theme::Accent : theme::Line);
+	text("Close", 28.f, 1098.f, baseline(63.f,28.f), headerColour);
+	fill(2,119,SettingsWidth-2,121,theme::Line);
+	fill(2,121,SettingsWidth-2,204,inset);
+	const char* tabs[] = {"Gun","World","System","In-game"};
+	for (int i=0;i<4;++i)
+	{
+		const auto rect = settingsTabRect(i);
+		const bool active = panel.activeTab == i, selected = panel.selectedTab == i && !panel.dialog && !panel.locked;
+		card(rect, active ? theme::Selection : inset, selected ? theme::Accent : active ? edge : inset, 12.f);
+		if (active) fill((int)(rect.x*SettingsWidth)+12,186,(int)((rect.x+rect.w)*SettingsWidth)-12,189,
+			(panel.dialog||panel.locked) ? theme::Dim : theme::Accent);
+		text(tabs[i],32.f,(rect.x+rect.w*.5f)*SettingsWidth,baseline(160.f,32.f),
+			(panel.dialog||panel.locked) ? theme::Dim : active || selected ? theme::Text : theme::Muted);
+	}
+	fill(2,203,SettingsWidth-2,205,theme::Line);
+	if (panel.dialog)
+	{
+		fitText(panel.title,44.f,84.f,307,1032.f,theme::Text);
+		wrappedText(panel.subtitle,29.f,84.f,363,1032.f,theme::Muted,3);
+	}
+	else
+	{
+		const float left = panel.back ? 112.f : 38.f;
+		if (panel.back)
+		{
+			card(settingsBackRect(),surface,panel.backSelected ? theme::Accent : theme::Line);
+			text("<",37.f,65.f,baseline(257.f,37.f),theme::Accent);
+		}
+		fitText(panel.title,36.f,left,258,SettingsWidth-left-38.f,theme::Text);
+		fitText(panel.subtitle,24.f,left,291,SettingsWidth-left-38.f,theme::Muted);
+	}
+	for (int i=0;i<(int)panel.rows.size() && i<(panel.dialog?2:SettingsMaxRows);++i)
+	{
+		const SettingsRow& row = panel.rows[i];
+		const auto rect = settingsRowRect(panel,i);
+		const float x=rect.x*SettingsWidth,y=rect.y*SettingsHeight,w=rect.w*SettingsWidth,h=rect.h*SettingsHeight;
+		const float middle=y+h*.5f;
+		const bool selected=row.selected && !row.dim;
+		card(rect,selected?glm::mix(surface,theme::Selection,.65f):surface,
+			selected?theme::Accent:theme::Line,14.f);
+		const auto foreground = row.dim ? theme::Dim : row.action ? theme::Accent : theme::Text;
+		const auto controls = choiceRects(panel,i);
+		const float controlLeft = !controls.empty() ? controls.front().x*SettingsWidth : row.stepper ? 858.f : x+w-270.f;
+		const float labelWidth = row.action ? w-100.f : std::max(180.f,controlLeft-x-42.f);
+		fitText(row.label,34.f,x+22.f,baseline(middle-(row.note.empty()?0.f:11.f),34.f),labelWidth,foreground);
+		if (!row.note.empty())
+			fitText(row.note,22.f,x+22.f,baseline(middle+20.f,22.f),labelWidth,row.dim?theme::Dim:theme::Muted);
+		if (!controls.empty())
+		{
+			for (int c=0;c<(int)controls.size();++c)
+			{
+				const bool chosen = c==row.choice, dim = row.dim || !row.canChoose(c);
+				card(controls[c],chosen ? dim ? glm::mix(inset,theme::Selection,.45f) : theme::Selection : inset,
+					chosen&&!dim?edge:theme::Line,10.f);
+				fitText(row.choices[c],27.f,(controls[c].x+controls[c].w*.5f)*SettingsWidth,
+					baseline(middle,27.f),controls[c].w*SettingsWidth-18.f,
+					dim?theme::Dim:chosen?theme::Text:theme::Muted,.5f);
+			}
+		}
+		else if (row.stepper)
+		{
+			for (int direction : {-1,1})
+			{
+				const auto step = stepRect(panel,i,direction);
+				card(step,row.dim?surface:theme::Selection,row.dim?theme::Line:edge,10.f);
+				text(direction<0?"-":"+",38.f,(step.x+step.w*.5f)*SettingsWidth,baseline(middle,38.f),
+					row.dim?theme::Dim:theme::Accent);
+			}
+			fitText(row.value,33.f,1009.f,baseline(middle,33.f),132.f,row.dim?theme::Dim:theme::Text,.5f);
+		}
+		else if (row.action)
+			text(">",36.f,x+w-34.f,baseline(middle,36.f),foreground);
+		else if (!row.value.empty())
+			fitText(row.value,30.f,x+w-24.f,baseline(middle,30.f),260.f,row.dim?theme::Dim:theme::Muted,1.f);
+	}
+	fill(2,810,SettingsWidth-2,SettingsHeight-2,inset);
+	fill(2,809,SettingsWidth-2,811,theme::Line);
+	fitText(panel.footer.empty()?"Aim + trigger to select  |  Stick to adjust":panel.footer,
+		23.f,38.f,852,884.f,theme::Muted);
+	text(panel.locked?"Saving...":"Menu to close",23.f,1162.f,852,panel.locked?theme::Muted:theme::Accent,1.f);
+	for(int y=0;y<SettingsHeight;++y)
+		for(int x=0;x<SettingsWidth;++x)
+		{
+			const float cx=std::clamp(x+.5f,26.f,SettingsWidth-26.f);
+			const float cy=std::clamp(y+.5f,26.f,SettingsHeight-26.f);
+			pixels[((size_t)y*SettingsWidth+x)*4+3]=(u8)std::lround(245.f*
+				std::clamp(26.5f-std::hypot(x+.5f-cx,y+.5f-cy),0.f,1.f));
+		}
+}
+
 bool initGl()
 {
 	if (program != 0)
@@ -473,6 +680,101 @@ int rowAt(const glm::mat4& model, const RowsPanel& panel, const glm::vec3& origi
 	return row < (int)panel.rows.size() ? row : -1;
 }
 
+RowsLayout settingsLayout()
+{
+	const float metre = SettingsWidthMetres / SettingsWidth;
+	return {SettingsWidthMetres, SettingsHeight * metre, SettingsRowPitch * metre,
+		(SettingsHeight * .5f - SettingsRowTop - SettingsRowHeight * .5f) * metre};
+}
+
+SettingsRect settingsRowRect(const SettingsPanel& panel, int row)
+{
+	if (row < 0 || row >= (int)panel.rows.size() || row >= (panel.dialog ? 2 : SettingsMaxRows)) return {};
+	if (panel.dialog) return normalized(216.f, 492.f + row * 96.f, 768.f, 82.f);
+	return normalized(36.f, SettingsRowTop + row * SettingsRowPitch, 1128.f, SettingsRowHeight);
+}
+
+SettingsRect settingsTabRect(int tab)
+{
+	return tab >= 0 && tab < 4 ? normalized(28.f + tab * 289.f, 134.f, 277.f, 56.f) : SettingsRect{};
+}
+
+SettingsRect settingsCloseRect() { return normalized(1036.f,32.f,124.f,62.f); }
+
+SettingsRect settingsBackRect() { return normalized(36.f,228.f,58.f,58.f); }
+
+SettingsHit settingsAt(const SettingsPanel& panel, glm::vec2 uv)
+{
+	if(panel.locked)return {};
+	if (!std::isfinite(uv.x) || !std::isfinite(uv.y) || uv.x < 0.f || uv.x > 1.f || uv.y < 0.f || uv.y > 1.f) return {};
+	if (!panel.dialog)
+	{
+		if (contains(settingsCloseRect(),uv)) return {SettingsHit::Kind::Close};
+		if (panel.back && contains(settingsBackRect(),uv)) return {SettingsHit::Kind::Back};
+		for (int tab=0;tab<4;++tab)
+			if (contains(settingsTabRect(tab),uv)) return {SettingsHit::Kind::Tab,tab};
+	}
+	for (int row=0;row<(int)panel.rows.size() && row<(panel.dialog?2:SettingsMaxRows);++row)
+	{
+		if (panel.rows[row].dim || !contains(settingsRowRect(panel,row),uv)) continue;
+		SettingsHit hit{SettingsHit::Kind::Row,row};
+		const auto choices=choiceRects(panel,row);
+		for(int choice=0;choice<(int)choices.size();++choice)
+			if(contains(choices[choice],uv)) { if (!panel.rows[row].canChoose(choice)) return {}; hit.choice=choice;return hit; }
+		if (choices.empty() && panel.rows[row].stepper)
+			for (int direction : {-1,1})
+				if (contains(stepRect(panel,row,direction),uv)) { hit.direction=direction;return hit; }
+		return hit;
+	}
+	return {};
+}
+
+bool settingsPanelHit(const glm::mat4& model, const SettingsPanel&, const glm::vec3& origin,
+		const glm::vec3& dir, glm::vec3* point, glm::vec2* uv)
+{
+	const auto inverse=glm::inverse(model);
+	const glm::vec3 o=inverse*glm::vec4(origin,1.f), d=inverse*glm::vec4(dir,0.f);
+	if (!std::isfinite(d.z) || d.z > -1e-6f) return false;
+	const float t=-o.z/d.z;
+	if (!std::isfinite(t) || t <= 0.f) return false;
+	const glm::vec3 hit=o+d*t;
+	const auto layout=settingsLayout();
+	const glm::vec2 at(hit.x/layout.width+.5f,.5f-hit.y/layout.height);
+	if (!std::isfinite(at.x) || !std::isfinite(at.y) || at.x<0.f || at.x>1.f || at.y<0.f || at.y>1.f) return false;
+	if (point) *point=origin+dir*t;
+	if (uv) *uv=at;
+	return true;
+}
+
+SettingsHit settingsHit(const glm::mat4& model, const SettingsPanel& panel,
+		const glm::vec3& origin, const glm::vec3& dir)
+{
+	glm::vec2 uv;
+	return settingsPanelHit(model,panel,origin,dir,nullptr,&uv) ? settingsAt(panel,uv) : SettingsHit{};
+}
+
+void drawSettingsPanel(const glm::mat4& viewProj, const glm::mat4& model, const SettingsPanel& panel)
+{
+	if (!loadFont() || !initGl()) return;
+	std::string says;
+	auto append=[&](const std::string& value) { says+=std::to_string(value.size())+':'+value; };
+	append(panel.game);append(panel.title);append(panel.subtitle);append(panel.footer);
+	append(std::to_string(panel.activeTab));append(std::to_string(panel.selectedTab));
+	says+=char('0'+panel.back+panel.backSelected*2+panel.closeSelected*4+panel.dialog*8+panel.locked*16);
+	for(const auto& row:panel.rows)
+	{
+		append(row.label);append(row.value);append(row.note);append(std::to_string(row.choice));
+		says+=char('0'+row.selected+row.dim*2+row.stepper*4+row.action*8);
+		append(std::to_string(row.choices.size()));
+		for(const auto& choice:row.choices) append(choice);
+        append(std::to_string(row.choiceEnabled.size()));
+        for (bool enabled : row.choiceEnabled) says += enabled ? '1' : '0';
+	}
+	bindPicture(settingsPicture,says,[&] { paintSettings(panel); });
+	const auto layout=settingsLayout();
+	drawQuad(viewProj,model,layout.width*.5f,layout.height*.5f);
+}
+
 unsigned textTexture(const std::string& text, float px, const glm::vec3& colour, int& width, int& height)
 {
 	width = height = 0;
@@ -524,11 +826,40 @@ void drawTexture(const glm::mat4& viewProj, const glm::mat4& model, unsigned tex
 	drawQuad(viewProj, model, hx, hy, tint);
 }
 
+
+void drawPanelContact(const glm::mat4& viewProj, const glm::mat4& model)
+{
+ if (!initGl()) return;
+ if (contactTexture == 0)
+ {
+  constexpr int size = 64;
+  std::vector<u8> dot(size * size * 4);
+  for (int y = 0; y < size; ++y) for (int x = 0; x < size; ++x)
+  {
+   const float radius = std::hypot((x + .5f) / size * 2.f - 1.f, (y + .5f) / size * 2.f - 1.f);
+   const float core = 1.f - std::clamp((radius - .13f) / .12f, 0.f, 1.f);
+   const glm::vec3 colour = glm::mix(theme::Accent, glm::vec3(1.f), core);
+   const int at = (y * size + x) * 4;
+   for (int c = 0; c < 3; ++c) dot[at + c] = (u8)std::lround(colour[c] * 255.f);
+   dot[at + 3] = (u8)std::lround(255.f * std::max(core, .7f * std::pow(std::max(0.f, 1.f - radius), 2.f)));
+  }
+  glActiveTexture(GL_TEXTURE0);
+  glGenTextures(1, &contactTexture);
+  glcache.BindTexture(GL_TEXTURE_2D, contactTexture);
+  glcache.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glcache.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glcache.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glcache.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size, size, 0, GL_RGBA, GL_UNSIGNED_BYTE, dot.data());
+ }
+ drawTexture(viewProj, model, contactTexture, .012f, .012f);
+}
+
 void termPanel()
 {
 	if (program != 0)
 		glcache.DeleteProgram(program);
-	for (Picture *picture : { &linesPicture, &rowsPicture })
+	for (Picture *picture : { &linesPicture, &rowsPicture, &settingsPicture })
 	{
 		if (picture->texture != 0)
 			glcache.DeleteTextures(1, &picture->texture);
@@ -541,6 +872,8 @@ void termPanel()
 	if (whiteTexture != 0)
 		glcache.DeleteTextures(1, &whiteTexture);
 	whiteTexture = 0;
+	if (contactTexture != 0) glcache.DeleteTextures(1, &contactTexture);
+	contactTexture = 0;
 	if (quadVbo != 0) glDeleteBuffers(1, &quadVbo);
 	deleteVertexArray(quadVao);
 	program = 0;
